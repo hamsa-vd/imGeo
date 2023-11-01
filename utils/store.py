@@ -8,7 +8,7 @@ from PIL import Image
 class Store:
     _instance = None
     current_screen: Screen
-    images: str
+    images: List[str]
     _final_images: List[FinalImage]
     datetime: datetime
     latitude_deg: float
@@ -20,7 +20,7 @@ class Store:
     
     def __init__(self):
         self.current_screen = Screen.HOME
-        self.images = None
+        self.images = []
         self._final_images = []
         self.datetime = None
         self.latitude_deg = None

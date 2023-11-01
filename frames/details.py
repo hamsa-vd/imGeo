@@ -141,7 +141,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.longitude_deg = float(self.longitude_deg.get())
         self.master.store.longitude_ref = self.longitude_ref.get()
         self.master.store.address = self.address.get().strip()
-        self.master.store.pic_name = self.address.get().strip()
+        self.master.store.pic_name = self.pic_name.get().strip()
         self.master.next_screen()
     
     def set_values(self):

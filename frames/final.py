@@ -15,23 +15,23 @@ class FinalFrame(ctk.CTkFrame):
         self.process_images()
     
     def process_images(self):
-        image = Image.open(self.master.store.images)
-        date = self.master.store.datetime
-        latitude = abs(self.master.store.latitude_deg)
-        longitude = abs(self.master.store.longitude_deg)
-        filepath = self.master.store.images
-        
-        self.imprint_info_on_image(
-            image=image,
-            date=date.strftime("%d %b %Y  %H:%M:%S"),
-            latitude=f"{latitude}{self.master.store.latitude_ref}",
-            longitude=f"{longitude}{self.master.store.longitude_ref}",
-            address=self.master.store.address,
-            pic_name=self.master.store.pic_name,
-            filepath=filepath
-        )
-        exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
-        self.master.store.insert_final_image(image_path=filepath, image=image, exif_bytes=exif_bytes)
+        for image_path in self.master.store.images:
+            image = Image.open(image_path)
+            date = self.master.store.datetime
+            latitude = abs(self.master.store.latitude_deg)
+            longitude = abs(self.master.store.longitude_deg)
+            
+            self.imprint_info_on_image(
+                image=image,
+                date=date.strftime("%d %b %Y  %H:%M:%S"),
+                latitude=f"{latitude}{self.master.store.latitude_ref}",
+                longitude=f"{longitude}{self.master.store.longitude_ref}",
+                address=self.master.store.address,
+                pic_name=self.master.store.pic_name,
+                filepath=image_path
+            )
+            exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
+            self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
         self.download_btn.configure(state=ctk.NORMAL)
     
     def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name):
