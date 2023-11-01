@@ -1,5 +1,6 @@
 from enum import Enum
 import customtkinter as ctk
+from PIL import Image
 
 class Screen(Enum):
     HOME="home"
@@ -36,3 +37,13 @@ class FloatEntry(ctk.CTkEntry):
                 return True
         else:
             return False
+
+class FinalImage:
+    image_path: str
+    image: Image.Image
+    exif_bytes: bytes
+    
+    def __init__(self, image_path: str, image: Image.Image, exif_bytes: bytes):
+        self.image_path = image_path
+        self.image = image
+        self.exif_bytes = image

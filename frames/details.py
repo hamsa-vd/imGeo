@@ -28,7 +28,9 @@ class DetailsFrame(ctk.CTkFrame):
         self.render_latitude_widget()
         self.render_longitude_widget()
         self.render_address_widget()
+        self.render_pic_name_widget()
         self.render_process_btn()
+        self.set_values()
     
     def render_process_btn(self):
         self.process_btn = ctk.CTkButton(
@@ -37,7 +39,17 @@ class DetailsFrame(ctk.CTkFrame):
             command=self.process_images,
             state=ctk.DISABLED
         )
-        self.process_btn.grid(row = 7, column=0, columnspan=2, pady=(20, 0))
+        self.process_btn.grid(row = 9, column=0, columnspan=2, pady=(20, 0))
+    
+    def render_pic_name_widget(self):
+        ctk.CTkLabel(
+            master=self,
+            text="Enter the Pic Name",
+            anchor="w"
+        ).grid(row=7, column=0, sticky="W", pady=(20, 0))
+        self.pic_name = ctk.CTkEntry(master=self, placeholder_text="Pic name here...")
+        self.pic_name.grid(row=8, column=0, columnspan=2, sticky="EW")
+        self.pic_name.bind("<KeyRelease>", lambda e: self.validate_inputs())
     
     def render_address_widget(self):
         ctk.CTkLabel(
@@ -45,7 +57,7 @@ class DetailsFrame(ctk.CTkFrame):
             text="Enter the address",
             anchor="w"
         ).grid(row=5, column=0, sticky="W", pady=(20, 0))
-        self.address = ctk.CTkTextbox(master=self)
+        self.address = ctk.CTkEntry(master=self, placeholder_text="Adress here...")
         self.address.grid(row=6, column=0, columnspan=2, sticky="EW")
         self.address.bind("<KeyRelease>", lambda e: self.validate_inputs())
     
@@ -115,7 +127,8 @@ class DetailsFrame(ctk.CTkFrame):
     def validate_inputs(self):
         if (self.latitude_deg.get() and
             self.longitude_deg.get() and
-            self.address.get("1.0", "end-1c").strip() and
+            self.address.get() and
+            self.pic_name.get() and
             self.latitude_ref.get() and
             self.longitude_ref.get()):
             self.process_btn.configure(state=ctk.NORMAL)
@@ -127,8 +140,16 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.latitude_ref = self.latitude_ref.get()
         self.master.store.longitude_deg = float(self.longitude_deg.get())
         self.master.store.longitude_ref = self.longitude_ref.get()
-        self.master.store.address = self.address.get("1.0", "end-1c")
+        self.master.store.address = self.address.get().strip()
+        self.master.store.pic_name = self.address.get().strip()
         self.master.next_screen()
+    
+    def set_values(self):
+        self.latitude_deg.insert(0, "51.59760168")
+        self.longitude_deg.insert(0, "0.08291295")
+        self.address.insert(0, "17 Neville Road, IG6 2LN")
+        self.pic_name.insert(0, "Bathroom 1")
+        self.validate_inputs()
 
 
 class DateTimePicker(ctk.CTkToplevel):
