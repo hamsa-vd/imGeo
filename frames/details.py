@@ -15,10 +15,11 @@ class DetailsFrame(ctk.CTkFrame):
         
     def init_vars(self):
         current_timestamp = datetime.now()
-        date = current_timestamp.strftime("%d %b %Y")
+        date = current_timestamp.date()
         hour = current_timestamp.time().hour
         minute = current_timestamp.time().minute
-        self.date_label = ctk.StringVar(value=self.format_datetime(date=date, hour=hour, minute=minute))
+        self.date_label = ctk.StringVar(value=self.format_datetime(date=date.strftime("%d %b %Y"), hour=hour, minute=minute))
+        self.master.store.datetime = datetime(date.year, date.month, date.day, hour, minute)
         
     def render_widgets(self):
         
@@ -33,6 +34,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.process_btn = ctk.CTkButton(
             master=self,
             text="Process Images",
+            command=self.process_images,
             state=ctk.DISABLED
         )
         self.process_btn.grid(row = 7, column=0, columnspan=2, pady=(20, 0))
@@ -121,11 +123,11 @@ class DetailsFrame(ctk.CTkFrame):
             self.process_btn.configure(state=ctk.DISABLED)
     
     def process_images(self):
-        self.master.store.latitude_deg = self.latitude_deg.getdouble()
+        self.master.store.latitude_deg = float(self.latitude_deg.get())
         self.master.store.latitude_ref = self.latitude_ref.get()
-        self.master.store.longitude_deg = self.longitude_deg.getdouble()
+        self.master.store.longitude_deg = float(self.longitude_deg.get())
         self.master.store.longitude_ref = self.longitude_ref.get()
-        self.master.store.address = self.address.get()
+        self.master.store.address = self.address.get("1.0", "end-1c")
         self.master.next_screen()
 
 

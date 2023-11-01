@@ -12,23 +12,25 @@ class HomeFrame(ctk.CTkFrame):
         self.dnd_bind('<<Drop>>', self.drop)
 
         self.label = ctk.CTkLabel(self, text="Drag and Drop here")
-        self.label.place(relx=0.5, rely=0.54, anchor=tk.CENTER)
+        self.label.place(relx=0.5, rely=0.54, anchor=ctk.CENTER)
 
         self.or_label = ctk.CTkLabel(self, text="(Or)", text_color="#71797E")
-        self.or_label.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
+        self.or_label.place(relx=0.5, rely=0.5, anchor=ctk.CENTER)
 
         self.upload_button = ctk.CTkButton(self, text="Upload", command=self.upload_images)
-        self.upload_button.place(relx=0.5, rely=0.45, anchor=tk.CENTER)
+        self.upload_button.place(relx=0.5, rely=0.45, anchor=ctk.CENTER)
 
     def drop(self, event):
         self.master.store.images = event.data
         self.master.next_screen()
 
     def upload_images(self):
+        # self.master.withdraw()
         image = filedialog.askopenfilename(
                 title="Select Images",
                 filetypes=[("Image files", "*.jpg;*.jpeg;*.png")]
             )
         if image:
+            # self.master.deiconify()
             self.master.store.images = image
             self.master.next_screen()

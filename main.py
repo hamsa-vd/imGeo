@@ -6,6 +6,7 @@ sys.path.insert(0, "./frames")
 sys.path.insert(1, "./utils")
 from home import HomeFrame
 from details import DetailsFrame
+from final import FinalFrame
 from store import Store
 from common import Screen
 class App(ctk.CTk, TkinterDnD.DnDWrapper):
@@ -42,6 +43,10 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
     def next_screen(self):
         if self.store.current_screen == Screen.HOME:
             self.details_screen()
+        elif self.store.current_screen == Screen.DETAILS:
+            self.final_screen()
+        else:
+            self.home_screen()
 
     def home_screen(self):
         self.store.current_screen = Screen.HOME
@@ -56,6 +61,13 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
         
         self.details_frame = DetailsFrame(self, fg_color='transparent')
         self.details_frame.pack(expand=True, fill="both", padx=40, pady=40)
+    
+    def final_screen(self):
+        self.store.current_screen = Screen.FINAL
+        self.clear_screen()
+        
+        self.final_frame = FinalFrame(self, fg_color='transparent')
+        self.final_frame.pack(expand=True, fill="both", padx=40, pady=40)
 
 if __name__ == "__main__":
     app = App()

@@ -15,11 +15,11 @@ class Store:
             self._instance = super(Store, self).__new__(self, *args, **kwargs)
         return self._instance
 
-    def __repr__(self):
+    def get_dict(self):
         return {
             "images": self.images,
             "finalImages": self.final_images,
-            datetime: self.datetime,
+            "datetime": self.datetime,
             "latitude": {
                 "deg": self.latitude_deg,
                 "ref": self.latitude_ref
@@ -29,3 +29,9 @@ class Store:
                 "ref": self.longitude_ref
             }
         }
+
+    def __repr__(self):
+        return self.get_dict()
+    
+    def reset(self):
+        self._instance = Store()
