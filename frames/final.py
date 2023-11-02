@@ -22,8 +22,8 @@ class FinalFrame(ctk.CTkFrame):
             image = Image.open(image_path)
             date = last_datetime
             last_datetime = self.get_rand_datetime(last_datetime)
-            latitude = abs(self.master.store.latitude_deg)
-            longitude = abs(self.master.store.longitude_deg)
+            latitude = self.randomize_last_three_decimals(abs(self.master.store.latitude_deg))
+            longitude = self.randomize_last_three_decimals(abs(self.master.store.longitude_deg))
             
             self.imprint_info_on_image(
                 image=image,
@@ -37,6 +37,14 @@ class FinalFrame(ctk.CTkFrame):
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
         self.download_btn.configure(state=ctk.NORMAL)
+    
+    def randomize_last_three_decimals(self, value):
+        value_str = f"{value:.8f}"
+        whole_part, decimal_part = value_str.split('.')
+        first_five_decimals = decimal_part[:5]
+        last_three_random = f"{random.randint(0, 999):03d}"
+        new_value_str = f"{whole_part}.{first_five_decimals}{last_three_random}"
+        return float(new_value_str)
     
     def get_rand_datetime(self, last):
         random_minutes = random.randint(self.master.store.from_minutes, self.master.store.to_minutes)
@@ -65,7 +73,7 @@ class FinalFrame(ctk.CTkFrame):
         rectangle_position = (position[0], position[1], position[0] + text_width, position[1] + text_block_height)
         rectangle = Image.new('RGBA', image.size, (0, 0, 0, 0))
         rectangle_draw = ImageDraw.Draw(rectangle)
-        rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 128)) 
+        rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 64)) 
         
         image.paste(rectangle, mask=rectangle)
         

@@ -109,13 +109,13 @@ class DetailsFrame(ctk.CTkFrame):
         from_minute_frame.grid(row=self.current_row, column=0, pady=(20, 0), sticky="EW")
         
         ctk.CTkLabel(master=from_minute_frame, text="From mins").pack(padx=(0, 10), side=ctk.LEFT)
-        self.from_minutes_box = IntSpinbox(master=from_minute_frame, from_=0, to=60, initial_val=1)
+        self.from_minutes_box = IntSpinbox(master=from_minute_frame, from_=0, to=2, initial_val=1, command=self.from_minutes_updated)
         self.from_minutes_box.pack(side=ctk.LEFT)
         
         to_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
         to_minute_frame.grid(row=self.current_row, column=1, pady=(20, 0), sticky='W')
         ctk.CTkLabel(master=to_minute_frame, text="To mins").pack(padx=10, side=ctk.LEFT)
-        self.to_minutes_box = IntSpinbox(master=to_minute_frame, from_=0, to=60, initial_val=2)
+        self.to_minutes_box = IntSpinbox(master=to_minute_frame, from_=1, to=60, initial_val=2, command=self.to_minutes_updated)
         self.to_minutes_box.pack(side= ctk.LEFT)
         self.current_row += 1
     
@@ -157,6 +157,14 @@ class DetailsFrame(ctk.CTkFrame):
             self.process_btn.configure(state=ctk.NORMAL)
         else:
             self.process_btn.configure(state=ctk.DISABLED)
+    
+    def to_minutes_updated(self):
+        to_minutes = self.to_minutes_box.get()
+        self.from_minutes_box.configure(to=int(to_minutes))
+    
+    def from_minutes_updated(self):
+        from_minutes = self.from_minutes_box.get()
+        self.to_minutes_box.configure(from_=int(from_minutes))
     
     def process_images(self):
         self.master.store.latitude_deg = float(self.latitude_deg.get())

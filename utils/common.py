@@ -94,8 +94,6 @@ class IntSpinbox(ctk.CTkFrame):
         return self.min <= value <= self.max
 
     def add_button_callback(self):
-        if self.command is not None:
-            self.command()
         try:
             if self.entry.get() == "":
                 value = 0
@@ -107,12 +105,13 @@ class IntSpinbox(ctk.CTkFrame):
             self.subtract_button.configure(state=ctk.NORMAL)
             self.entry.delete(0, "end")
             self.entry.insert(0, value)
+            
+            if self.command is not None:
+                self.command()
         except ValueError:
             return
 
     def subtract_button_callback(self):
-        if self.command is not None:
-            self.command()
         try:
             if self.entry.get() == "":
                 self.subtract_button.configure(state=ctk.DISABLED)
@@ -125,6 +124,8 @@ class IntSpinbox(ctk.CTkFrame):
             self.add_button.configure(state=ctk.NORMAL)
             self.entry.delete(0, "end")
             self.entry.insert(0, value)
+            if self.command is not None:
+                self.command()
         except ValueError:
             return
 
@@ -137,3 +138,17 @@ class IntSpinbox(ctk.CTkFrame):
     def set(self, value: int):
         self.entry.delete(0, "end")
         self.entry.insert(0, str(int(value)))
+    
+    def configure(self, **kwargs):
+        from_ = kwargs.pop('from_', None)
+        to = kwargs.pop('to', None)
+        
+        if from_ is not None:
+            self.min = from_
+            if int(self.entry.get()) > from_:
+                self.subtract_button.configure(state=ctk.NORMAL)
+        if to is not None:
+            self.max = to
+            if int(self.entry.get()) < to:
+                self.add_button.configure(state=ctk.NORMAL)
+        super().configure(**kwargs)
