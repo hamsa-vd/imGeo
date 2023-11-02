@@ -1,5 +1,4 @@
-import tkinter as tk
-from tkinter import filedialog
+from customtkinter import filedialog
 import customtkinter as ctk
 from tkinterdnd2 import DND_FILES
 

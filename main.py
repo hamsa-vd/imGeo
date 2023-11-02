@@ -1,4 +1,3 @@
-import tkinter as tk
 import customtkinter as ctk
 from tkinterdnd2 import TkinterDnD
 import sys
@@ -31,7 +30,7 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
                 text= "Home",
                 command=self.home_screen
             )
-        self.home_btn.pack(padx=10, pady=10, anchor=tk.NW)
+        self.home_btn.pack(padx=10, pady=10, anchor=ctk.NW)
 
     def clear_screen(self):
         for widget in self.winfo_children():

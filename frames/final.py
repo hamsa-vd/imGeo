@@ -1,5 +1,5 @@
 import customtkinter as ctk
-from tkinter import filedialog
+from customtkinter import filedialog
 from PIL import Image, ImageDraw, ImageFont, ImageTk
 import piexif
 import os

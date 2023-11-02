@@ -1,14 +1,15 @@
-import tkinter as tk
-from tkinter import ttk, filedialog
 import customtkinter as ctk
-from tkcalendar import Calendar
-from datetime import datetime, date, time
-from PIL import Image, ImageDraw, ImageFont, ImageTk
+from customtkinter import filedialog
 from tkinterdnd2 import TkinterDnD, DND_FILES
+from tkcalendar import Calendar
+from PIL import Image, ImageDraw, ImageFont, ImageTk
 import piexif
-import os
-from enum import Enum
+from datetime import datetime, date, time, timedelta
 from typing import List
+from enum import Enum
+import os
+import sys
+import random
 
 class Screen(Enum):
     HOME="home"
@@ -34,17 +35,16 @@ class LongitudeRef(Enum):
 class FloatEntry(ctk.CTkEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        vcmd = (self.register(self.validate),'%P')
-        self.configure(validate="all", validatecommand=vcmd)
+        self.configure(validate="all", validatecommand=(self.register(self.validate),'%P'))
 
     def validate(self, text):
-        if (
-            all(char in "0123456789.-" for char in text) and  # all characters are valid
-            "-" not in text[1:] and # "-" is the first character or not present
-            text.count(".") <= 1): # only 0 or 1 periods
-                return True
-        else:
+        if not text:
+            return True
+        try:
+            value = float(text)
+        except ValueError:
             return False
+        return 0 <= value <= 90
 
 class FinalImage:
     image_path: str
@@ -56,30 +56,125 @@ class FinalImage:
         self.image = image
         self.exif_bytes = image
 
+class IntSpinbox(ctk.CTkFrame):
+    def __init__(self, *args,
+                 width: int = 100,
+                 height: int = 32,
+                 step_size: int = 1,
+                 command = None,
+                 from_: int = 0,
+                 to: int = sys.maxsize,
+                 initial_val: int = 0,
+                 **kwargs):
+        super().__init__(*args, width=width, height=height, **kwargs)
+
+        self.step_size = step_size
+        self.command = command
+        self.min = from_
+        self.max = to
+
+        self.configure(fg_color=("gray78", "gray28"))  # set frame color
+
+        self.grid_columnconfigure((0, 2), weight=0)  # buttons don't expand
+        self.grid_columnconfigure(1, weight=1)  # entry expands
+
+        self.subtract_button = ctk.CTkButton(self, text="-", width=height-6, height=height-6,
+                                                       command=self.subtract_button_callback)
+        self.subtract_button.grid(row=0, column=0, padx=(3, 0), pady=3)
+
+        self.entry = ctk.CTkEntry(self, width=width-(2*height), height=height-6, border_width=0, justify='center', validate="key", validatecommand=(self.register(self.validate), '%P'))
+        self.entry.grid(row=0, column=1, columnspan=1, padx=3, pady=3, sticky="ew")
+
+        self.add_button = ctk.CTkButton(self, text="+", width=height-6, height=height-6,
+                                                  command=self.add_button_callback)
+        self.add_button.grid(row=0, column=2, padx=(0, 3), pady=3)
+
+        # default value
+        self.entry.insert(0, str(initial_val))
+    
+    def validate(self, inp):
+        if not inp:
+            return True
+        try:
+            value = int(inp)
+        except ValueError:
+            return False
+        return self.min <= value <= self.max
+
+    def add_button_callback(self):
+        try:
+            if self.entry.get() == "":
+                value = 0
+            else:
+                value = int(self.entry.get()) + self.step_size
+            if value > self.max:
+                self.add_button.configure(state=ctk.DISABLED)
+                return
+            self.subtract_button.configure(state=ctk.NORMAL)
+            self.entry.delete(0, "end")
+            self.entry.insert(0, value)
+            
+            if self.command is not None:
+                self.command()
+        except ValueError:
+            return
+
+    def subtract_button_callback(self):
+        try:
+            if self.entry.get() == "":
+                self.subtract_button.configure(state=ctk.DISABLED)
+                value = 0
+            else:
+                value = int(self.entry.get()) - self.step_size
+            if value < self.min:
+                self.subtract_button.configure(state=ctk.DISABLED)
+                return
+            self.add_button.configure(state=ctk.NORMAL)
+            self.entry.delete(0, "end")
+            self.entry.insert(0, value)
+            if self.command is not None:
+                self.command()
+        except ValueError:
+            return
+
+    def get(self):
+        try:
+            return int(self.entry.get())
+        except ValueError:
+            return None
+
+    def set(self, value: int):
+        self.entry.delete(0, "end")
+        self.entry.insert(0, str(int(value)))
+    
+    def configure(self, **kwargs):
+        from_ = kwargs.pop('from_', None)
+        to = kwargs.pop('to', None)
+        
+        if from_ is not None:
+            self.min = from_
+            if int(self.entry.get()) > from_:
+                self.subtract_button.configure(state=ctk.NORMAL)
+        if to is not None:
+            self.max = to
+            if int(self.entry.get()) < to:
+                self.add_button.configure(state=ctk.NORMAL)
+        super().configure(**kwargs)
+
 class Store:
     _instance = None
-    current_screen: Screen
-    images: List[str]
-    _final_images: List[FinalImage]
-    datetime: datetime
-    latitude_deg: float
-    latitude_ref: LatitudeRef
-    longitude_deg: float
-    longitude_ref: LongitudeRef
-    address: str
-    pic_name: str
-    
-    def __init__(self):
-        self.current_screen = Screen.HOME
-        self.images = []
-        self._final_images = []
-        self.datetime = None
-        self.latitude_deg = None
-        self.latitude_ref = None
-        self.longitude_deg = None
-        self.longitude_ref = None
-        self.address = None
-        self.pic_name = None
+    current_screen: Screen = Screen.HOME
+    images: List[str] = []
+    _final_images: List[FinalImage] = []
+    datetime: datetime = None
+    latitude_deg: float = None
+    latitude_ref: LatitudeRef = LatitudeRef.N
+    longitude_deg: float = None
+    longitude_ref: LongitudeRef = LongitudeRef.E
+    address: str = None
+    pic_name: str = None
+    from_minutes: int = 0
+    to_minutes: int = 0
     
     def __new__(self, *args, **kwargs):
         if not self._instance:
@@ -112,65 +207,6 @@ class Store:
     def reset(self):
         self._instance = Store()
 
-class App(ctk.CTk, TkinterDnD.DnDWrapper):
-    
-    store: Store = Store()
-    
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.TkdndVersion = TkinterDnD._require(self)
-
-        self.title("Britian Energy Image")
-        self.minsize(480, 640)
-        self.geometry("480x640")
-        self.maxsize(480, 760)
-        
-        self.home_screen()
-        
-    def render_home_btn(self):
-        self.home_btn = ctk.CTkButton(
-                master=self, 
-                corner_radius=5, 
-                text= "Home",
-                command=self.home_screen
-            )
-        self.home_btn.pack(padx=10, pady=10, anchor=tk.NW)
-
-    def clear_screen(self):
-        for widget in self.winfo_children():
-            widget.destroy()
-        
-        if self.store.current_screen != Screen.HOME:
-            self.render_home_btn()
-
-    def next_screen(self):
-        if self.store.current_screen == Screen.HOME:
-            self.details_screen()
-        elif self.store.current_screen == Screen.DETAILS:
-            self.final_screen()
-        else:
-            self.home_screen()
-
-    def home_screen(self):
-        self.store.current_screen = Screen.HOME
-        self.clear_screen()
-        
-        self.home_frame = HomeFrame(self, border_width=2)
-        self.home_frame.pack(expand=True, fill="both", padx=40, pady=40)
-
-    def details_screen(self):
-        self.store.current_screen = Screen.DETAILS
-        self.clear_screen()
-        
-        self.details_frame = DetailsFrame(self, fg_color='transparent')
-        self.details_frame.pack(expand=True, fill="both", padx=40, pady=40)
-    
-    def final_screen(self):
-        self.store.current_screen = Screen.FINAL
-        self.clear_screen()
-        
-        self.final_frame = FinalFrame(self, fg_color='transparent')
-        self.final_frame.pack(expand=True, fill="both", padx=40, pady=40)
 
 class HomeFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -235,10 +271,12 @@ class HomeFrame(ctk.CTkFrame):
             self.master.store.images = images
             self.master.next_screen()
 
+
 class DetailsFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
+        self.current_row = 0
         self.render_widgets()
         
     def init_vars(self):
@@ -253,6 +291,7 @@ class DetailsFrame(ctk.CTkFrame):
         
         self.init_vars()
         self.render_date_entry_widget()
+        self.render_from_to_minutes_widget()
         self.render_latitude_widget()
         self.render_longitude_widget()
         self.render_address_widget()
@@ -267,62 +306,83 @@ class DetailsFrame(ctk.CTkFrame):
             command=self.process_images,
             state=ctk.DISABLED
         )
-        self.process_btn.grid(row = 9, column=0, columnspan=2, pady=(20, 0))
+        self.process_btn.grid(row = self.current_row, column=0, columnspan=2, pady=(20, 0))
+        self.current_row += 1
     
     def render_pic_name_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Enter the Pic Name",
             anchor="w"
-        ).grid(row=7, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.pic_name = ctk.CTkEntry(master=self, placeholder_text="Pic name here...")
-        self.pic_name.grid(row=8, column=0, columnspan=2, sticky="EW")
+        self.pic_name.grid(row=self.current_row+1, column=0, columnspan=2, sticky="EW")
         self.pic_name.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        self.current_row += 2
     
     def render_address_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Enter the address",
             anchor="w"
-        ).grid(row=5, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.address = ctk.CTkEntry(master=self, placeholder_text="Adress here...")
-        self.address.grid(row=6, column=0, columnspan=2, sticky="EW")
+        self.address.grid(row=self.current_row + 1, column=0, columnspan=2, sticky="EW")
         self.address.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        self.current_row += 2
+    
     
     def render_longitude_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Longitude Details",
             anchor="w"
-        ).grid(row=3, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.longitude_deg = FloatEntry(
             master=self, 
             placeholder_text="Longitude Degree",
             width=200
         )
-        self.longitude_deg.grid(row=4, column=0, sticky="W")
+        self.longitude_deg.grid(row=self.current_row + 1, column=0, sticky="W")
         self.longitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
 
         
         self.longitude_ref = ctk.CTkComboBox(master=self, values=LongitudeRef.values(), width=80)
-        self.longitude_ref.grid(row=4, column=1, padx=(10, 0), sticky="W")
+        self.longitude_ref.grid(row=self.current_row + 1, column=1, padx=(10, 0), sticky="W")
+        self.current_row += 2
     
     def render_latitude_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Latitude Details",
             anchor="w"
-        ).grid(row=1, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.latitude_deg = FloatEntry(
             master=self, 
             placeholder_text="Latitude Degree",
             width=200
         )
-        self.latitude_deg.grid(row=2, column=0, sticky="W")
+        self.latitude_deg.grid(row=self.current_row+1, column=0, sticky="W")
         self.latitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
         
         self.latitude_ref = ctk.CTkComboBox(master=self, values=LatitudeRef.values(), width=80)
-        self.latitude_ref.grid(row=2, column=1, padx=(10, 0), sticky="W")
+        self.latitude_ref.grid(row=self.current_row+1, column=1, padx=(10, 0), sticky="W")
+        self.current_row += 2
+    
+    def render_from_to_minutes_widget(self):
+        from_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
+        from_minute_frame.grid(row=self.current_row, column=0, pady=(20, 0), sticky="EW")
+        
+        ctk.CTkLabel(master=from_minute_frame, text="From mins").pack(padx=(0, 10), side=ctk.LEFT)
+        self.from_minutes_box = IntSpinbox(master=from_minute_frame, from_=0, to=2, initial_val=1, command=self.from_minutes_updated)
+        self.from_minutes_box.pack(side=ctk.LEFT)
+        
+        to_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
+        to_minute_frame.grid(row=self.current_row, column=1, pady=(20, 0), sticky='W')
+        ctk.CTkLabel(master=to_minute_frame, text="To mins").pack(padx=10, side=ctk.LEFT)
+        self.to_minutes_box = IntSpinbox(master=to_minute_frame, from_=1, to=60, initial_val=2, command=self.to_minutes_updated)
+        self.to_minutes_box.pack(side= ctk.LEFT)
+        self.current_row += 1
     
     def render_date_entry_widget(self):
         ctk.CTkButton(
@@ -330,8 +390,9 @@ class DetailsFrame(ctk.CTkFrame):
             corner_radius=5,
             text="Pick date and time", 
             command=self.pick_datetime
-        ).grid(row=0, column=0, pady=10, sticky="W")
-        ctk.CTkLabel(master=self, textvariable=self.date_label).grid(row=0, column=1, padx=10, pady=10, sticky="W")
+        ).grid(row=self.current_row, column=0, pady=10, sticky="W")
+        ctk.CTkLabel(master=self, textvariable=self.date_label).grid(row=self.current_row, column=1, padx=10, pady=10, sticky="W")
+        self.current_row += 1
         
     def format_datetime(self, date, hour, minute):
         return f"Selected: {date} {hour:02}:{minute:02}"
@@ -356,12 +417,19 @@ class DetailsFrame(ctk.CTkFrame):
         if (self.latitude_deg.get() and
             self.longitude_deg.get() and
             self.address.get() and
-            self.pic_name.get() and
             self.latitude_ref.get() and
             self.longitude_ref.get()):
             self.process_btn.configure(state=ctk.NORMAL)
         else:
             self.process_btn.configure(state=ctk.DISABLED)
+    
+    def to_minutes_updated(self):
+        to_minutes = self.to_minutes_box.get()
+        self.from_minutes_box.configure(to=int(to_minutes))
+    
+    def from_minutes_updated(self):
+        from_minutes = self.from_minutes_box.get()
+        self.to_minutes_box.configure(from_=int(from_minutes))
     
     def process_images(self):
         self.master.store.latitude_deg = float(self.latitude_deg.get())
@@ -369,7 +437,10 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.longitude_deg = float(self.longitude_deg.get())
         self.master.store.longitude_ref = self.longitude_ref.get()
         self.master.store.address = self.address.get().strip()
-        self.master.store.pic_name = self.pic_name.get().strip()
+        if self.pic_name.get() and self.pic_name.get().strip() != "":
+            self.master.store.pic_name = self.pic_name.get().strip()
+        self.master.store.from_minutes = int(self.from_minutes_box.get())
+        self.master.store.to_minutes = int(self.to_minutes_box.get())
         self.master.next_screen()
     
     def set_values(self):
@@ -379,6 +450,66 @@ class DetailsFrame(ctk.CTkFrame):
         self.pic_name.insert(0, "Bathroom 1")
         self.validate_inputs()
 
+
+class DateTimePicker(ctk.CTkToplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        
+        self.title("Pick a Data and Time")
+        self.attributes("-topmost", True)
+        self.minsize(width=360, height=360)
+        self.geometry("360x360")
+        self.maxsize(width=360, height=360)
+        self.bind("<Destroy>", self.on_destroy)
+        
+        # Date picker
+        self.calendar = Calendar(self)
+        self.calendar.pack(padx=20, pady=20, fill='both', expand=True)
+        
+        # Time picker
+        self.time_frame = ctk.CTkFrame(self, fg_color='transparent')
+        self.time_frame.pack(padx=10, pady=5)
+        
+        self.current_time = datetime.now().time()
+        # self.hour_var = ctk.StringVar(value=self.current_time.hour)
+        # self.minute_var = ctk.StringVar(value=self.current_time.minute)
+        
+        ctk.CTkLabel(self.time_frame, text="Hour:").grid(row=0, column=0, padx=(0, 10))
+        
+        
+        self.hour_box = IntSpinbox(master=self.time_frame, from_=0, to=23, initial_val=self.current_time.hour)
+        self.hour_box.grid(row=0, column=1)
+        # ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hour_var, width=5, validate='key', validatecommand=(self.register(self.validate_hours), '%P'))
+        
+        ctk.CTkLabel(self.time_frame, text="Minute:").grid(row=0, column=2, padx=(20, 10))
+        self.minute_box = IntSpinbox(master=self.time_frame, from_=0, to=23, initial_val=self.current_time.minute)
+        self.minute_box.grid(row=0, column=3)
+        # ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minute_var, width=5, validate='key', validatecommand=(self.register(self.validate_minutes, '%P'))).grid(row=0, column=3)
+        
+        ctk.CTkButton(self, text="OK", command=self.on_ok).pack(pady=10)
+
+    def validate_hours(self, P):
+        if P.strip() == "" or (P.isdigit() and int(P) in range(0, 24)):
+            return True
+        else:
+            return False
+    
+    def validate_minutes(self, P):
+        if P.strip() == "" or (P.isdigit() and int(P) in range(0, 60)):
+            return True
+        else:
+            return False
+
+    def on_ok(self):
+        self.destroy()
+    
+    def on_destroy(self, event):
+        if self.hour_box.get() == "":
+            self.hour_box.set(self.current_time.hour)
+        if self.minute_box.get() == "":
+            self.minute_box.set(self.current_time.minute)
+        self.date_time = (self.calendar.selection_get(), int(self.hour_var.get()), int(self.minute_var.get()))
+
 class FinalFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
@@ -387,11 +518,13 @@ class FinalFrame(ctk.CTkFrame):
         self.process_images()
     
     def process_images(self):
+        last_datetime = self.master.store.datetime.replace(second=random.randint(0, 60))
         for image_path in self.master.store.images:
             image = Image.open(image_path)
-            date = self.master.store.datetime
-            latitude = abs(self.master.store.latitude_deg)
-            longitude = abs(self.master.store.longitude_deg)
+            date = last_datetime
+            last_datetime = self.get_rand_datetime(last_datetime)
+            latitude = self.randomize_last_three_decimals(abs(self.master.store.latitude_deg))
+            longitude = self.randomize_last_three_decimals(abs(self.master.store.longitude_deg))
             
             self.imprint_info_on_image(
                 image=image,
@@ -405,6 +538,19 @@ class FinalFrame(ctk.CTkFrame):
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
         self.download_btn.configure(state=ctk.NORMAL)
+    
+    def randomize_last_three_decimals(self, value):
+        value_str = f"{value:.8f}"
+        whole_part, decimal_part = value_str.split('.')
+        first_five_decimals = decimal_part[:5]
+        last_three_random = f"{random.randint(0, 999):03d}"
+        new_value_str = f"{whole_part}.{first_five_decimals}{last_three_random}"
+        return float(new_value_str)
+    
+    def get_rand_datetime(self, last):
+        random_minutes = random.randint(self.master.store.from_minutes, self.master.store.to_minutes)
+        random_seconds = random.randint(0, 60)
+        return last.replace(second=random_seconds) + timedelta(minutes=random_minutes)
     
     def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name):
         text = f"{date}\n{latitude} {longitude}\n{address}\n{pic_name}"
@@ -424,6 +570,14 @@ class FinalFrame(ctk.CTkFrame):
 
         text_block_height = font.size * len(text.split("\n"))
         position = (10, height - text_block_height - 10)
+        
+        rectangle_position = (position[0], position[1], position[0] + text_width, position[1] + text_block_height)
+        rectangle = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        rectangle_draw = ImageDraw.Draw(rectangle)
+        rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 64)) 
+        
+        image.paste(rectangle, mask=rectangle)
+        
         draw.text(position, text, font=font, fill="white")
     
     def build_exif_bytes(self, dt, latitude, longitude):
@@ -478,43 +632,65 @@ class FinalFrame(ctk.CTkFrame):
         )
         self.download_btn.place(relx=0.5, rely=0.5, anchor= ctk.CENTER)
 
-class DateTimePicker(ctk.CTkToplevel):
-    def __init__(self, parent):
-        super().__init__(parent)
-        
-        self.title("Pick a Data and Time")
-        self.attributes("-topmost", True)
-        self.bind("<Destroy>", self.on_destroy)
-        
-        # Date picker
-        self.calendar = Calendar(self)
-        self.calendar.pack(padx=10, pady=10)
-        
-        # Time picker
-        self.time_frame = ctk.CTkFrame(self)
-        self.time_frame.pack(padx=10, pady=5)
-        
-        self.current_time = datetime.now().time()
-        self.hour_var = ctk.StringVar(value=self.current_time.hour)
-        self.minute_var = ctk.StringVar(value=self.current_time.minute)
-        
-        ctk.CTkLabel(self.time_frame, text="Hour:").grid(row=0, column=0, padx=(0, 10))
-        ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hour_var, width=5).grid(row=0, column=1)
-        
-        ctk.CTkLabel(self.time_frame, text="Minute:").grid(row=0, column=2, padx=(10, 0))
-        ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minute_var, width=5).grid(row=0, column=3)
-        
-        ctk.CTkButton(self, text="OK", command=self.on_ok).pack(pady=10)
-
-    def on_ok(self):
-        self.destroy()
+class App(ctk.CTk, TkinterDnD.DnDWrapper):
     
-    def on_destroy(self, event):
-        if self.hour_var.get() == "":
-            self.hour_var.set(self.current_time.hour)
-        if self.minute_var.get() == "":
-            self.minute_var.set(self.current_time.minute)
-        self.date_time = (self.calendar.selection_get(), int(self.hour_var.get()), int(self.minute_var.get()))
+    store: Store = Store()
+    
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.TkdndVersion = TkinterDnD._require(self)
+
+        self.title("Britian Energy Image")
+        self.minsize(480, 640)
+        self.geometry("480x640")
+        self.maxsize(480, 760)
+        
+        self.home_screen()
+        
+    def render_home_btn(self):
+        self.home_btn = ctk.CTkButton(
+                master=self, 
+                corner_radius=5, 
+                text= "Home",
+                command=self.home_screen
+            )
+        self.home_btn.pack(padx=10, pady=10, anchor=ctk.NW)
+
+    def clear_screen(self):
+        for widget in self.winfo_children():
+            widget.destroy()
+        
+        if self.store.current_screen != Screen.HOME:
+            self.render_home_btn()
+
+    def next_screen(self):
+        if self.store.current_screen == Screen.HOME:
+            self.details_screen()
+        elif self.store.current_screen == Screen.DETAILS:
+            self.final_screen()
+        else:
+            self.home_screen()
+
+    def home_screen(self):
+        self.store.current_screen = Screen.HOME
+        self.clear_screen()
+        
+        self.home_frame = HomeFrame(self, border_width=2)
+        self.home_frame.pack(expand=True, fill="both", padx=40, pady=40)
+
+    def details_screen(self):
+        self.store.current_screen = Screen.DETAILS
+        self.clear_screen()
+        
+        self.details_frame = DetailsFrame(self, fg_color='transparent')
+        self.details_frame.pack(expand=True, fill="both", padx=40, pady=40)
+    
+    def final_screen(self):
+        self.store.current_screen = Screen.FINAL
+        self.clear_screen()
+        
+        self.final_frame = FinalFrame(self, fg_color='transparent')
+        self.final_frame.pack(expand=True, fill="both", padx=40, pady=40)
 
 if __name__ == "__main__":
     app = App()
