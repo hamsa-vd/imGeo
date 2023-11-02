@@ -7,28 +7,18 @@ from PIL import Image
 
 class Store:
     _instance = None
-    current_screen: Screen
-    images: List[str]
-    _final_images: List[FinalImage]
-    datetime: datetime
-    latitude_deg: float
-    latitude_ref: LatitudeRef
-    longitude_deg: float
-    longitude_ref: LongitudeRef
-    address: str
-    pic_name: str
-    
-    def __init__(self):
-        self.current_screen = Screen.HOME
-        self.images = []
-        self._final_images = []
-        self.datetime = None
-        self.latitude_deg = None
-        self.latitude_ref = None
-        self.longitude_deg = None
-        self.longitude_ref = None
-        self.address = None
-        self.pic_name = None
+    current_screen: Screen = Screen.HOME
+    images: List[str] = []
+    _final_images: List[FinalImage] = []
+    datetime: datetime = None
+    latitude_deg: float = None
+    latitude_ref: LatitudeRef = LatitudeRef.N
+    longitude_deg: float = None
+    longitude_ref: LongitudeRef = LongitudeRef.E
+    address: str = None
+    pic_name: str = None
+    from_minutes: int = 0
+    to_minutes: int = 0
     
     def __new__(self, *args, **kwargs):
         if not self._instance:

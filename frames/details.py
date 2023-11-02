@@ -5,12 +5,13 @@ from tkcalendar import Calendar
 from datetime import datetime, date, time
 import sys
 sys.path.insert(0, "../utils")
-from common import LatitudeRef, LongitudeRef, FloatEntry
+from common import LatitudeRef, LongitudeRef, FloatEntry, IntSpinbox
 
 class DetailsFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
         super().__init__(master, **kwargs)
         self.master = master
+        self.current_row = 0
         self.render_widgets()
         
     def init_vars(self):
@@ -25,6 +26,7 @@ class DetailsFrame(ctk.CTkFrame):
         
         self.init_vars()
         self.render_date_entry_widget()
+        self.render_from_to_minutes_widget()
         self.render_latitude_widget()
         self.render_longitude_widget()
         self.render_address_widget()
@@ -39,62 +41,83 @@ class DetailsFrame(ctk.CTkFrame):
             command=self.process_images,
             state=ctk.DISABLED
         )
-        self.process_btn.grid(row = 9, column=0, columnspan=2, pady=(20, 0))
+        self.process_btn.grid(row = self.current_row, column=0, columnspan=2, pady=(20, 0))
+        self.current_row += 1
     
     def render_pic_name_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Enter the Pic Name",
             anchor="w"
-        ).grid(row=7, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.pic_name = ctk.CTkEntry(master=self, placeholder_text="Pic name here...")
-        self.pic_name.grid(row=8, column=0, columnspan=2, sticky="EW")
+        self.pic_name.grid(row=self.current_row+1, column=0, columnspan=2, sticky="EW")
         self.pic_name.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        self.current_row += 2
     
     def render_address_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Enter the address",
             anchor="w"
-        ).grid(row=5, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.address = ctk.CTkEntry(master=self, placeholder_text="Adress here...")
-        self.address.grid(row=6, column=0, columnspan=2, sticky="EW")
+        self.address.grid(row=self.current_row + 1, column=0, columnspan=2, sticky="EW")
         self.address.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        self.current_row += 2
+    
     
     def render_longitude_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Longitude Details",
             anchor="w"
-        ).grid(row=3, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.longitude_deg = FloatEntry(
             master=self, 
             placeholder_text="Longitude Degree",
             width=200
         )
-        self.longitude_deg.grid(row=4, column=0, sticky="W")
+        self.longitude_deg.grid(row=self.current_row + 1, column=0, sticky="W")
         self.longitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
 
         
         self.longitude_ref = ctk.CTkComboBox(master=self, values=LongitudeRef.values(), width=80)
-        self.longitude_ref.grid(row=4, column=1, padx=(10, 0), sticky="W")
+        self.longitude_ref.grid(row=self.current_row + 1, column=1, padx=(10, 0), sticky="W")
+        self.current_row += 2
     
     def render_latitude_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Latitude Details",
             anchor="w"
-        ).grid(row=1, column=0, sticky="W", pady=(20, 0))
+        ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.latitude_deg = FloatEntry(
             master=self, 
             placeholder_text="Latitude Degree",
             width=200
         )
-        self.latitude_deg.grid(row=2, column=0, sticky="W")
+        self.latitude_deg.grid(row=self.current_row+1, column=0, sticky="W")
         self.latitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
         
         self.latitude_ref = ctk.CTkComboBox(master=self, values=LatitudeRef.values(), width=80)
-        self.latitude_ref.grid(row=2, column=1, padx=(10, 0), sticky="W")
+        self.latitude_ref.grid(row=self.current_row+1, column=1, padx=(10, 0), sticky="W")
+        self.current_row += 2
+    
+    def render_from_to_minutes_widget(self):
+        from_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
+        from_minute_frame.grid(row=self.current_row, column=0, pady=(20, 0), sticky="EW")
+        
+        ctk.CTkLabel(master=from_minute_frame, text="From mins").pack(padx=(0, 10), side=ctk.LEFT)
+        self.from_minutes_box = IntSpinbox(master=from_minute_frame, from_=0, to=60, initial_val=1)
+        self.from_minutes_box.pack(side=ctk.LEFT)
+        
+        to_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
+        to_minute_frame.grid(row=self.current_row, column=1, pady=(20, 0), sticky='W')
+        ctk.CTkLabel(master=to_minute_frame, text="To mins").pack(padx=10, side=ctk.LEFT)
+        self.to_minutes_box = IntSpinbox(master=to_minute_frame, from_=0, to=60, initial_val=2)
+        self.to_minutes_box.pack(side= ctk.LEFT)
+        self.current_row += 1
     
     def render_date_entry_widget(self):
         ctk.CTkButton(
@@ -102,8 +125,9 @@ class DetailsFrame(ctk.CTkFrame):
             corner_radius=5,
             text="Pick date and time", 
             command=self.pick_datetime
-        ).grid(row=0, column=0, pady=10, sticky="W")
-        ctk.CTkLabel(master=self, textvariable=self.date_label).grid(row=0, column=1, padx=10, pady=10, sticky="W")
+        ).grid(row=self.current_row, column=0, pady=10, sticky="W")
+        ctk.CTkLabel(master=self, textvariable=self.date_label).grid(row=self.current_row, column=1, padx=10, pady=10, sticky="W")
+        self.current_row += 1
         
     def format_datetime(self, date, hour, minute):
         return f"Selected: {date} {hour:02}:{minute:02}"
@@ -128,7 +152,6 @@ class DetailsFrame(ctk.CTkFrame):
         if (self.latitude_deg.get() and
             self.longitude_deg.get() and
             self.address.get() and
-            self.pic_name.get() and
             self.latitude_ref.get() and
             self.longitude_ref.get()):
             self.process_btn.configure(state=ctk.NORMAL)
@@ -141,7 +164,10 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.longitude_deg = float(self.longitude_deg.get())
         self.master.store.longitude_ref = self.longitude_ref.get()
         self.master.store.address = self.address.get().strip()
-        self.master.store.pic_name = self.pic_name.get().strip()
+        if self.pic_name.get() and self.pic_name.get().strip() != "":
+            self.master.store.pic_name = self.pic_name.get().strip()
+        self.master.store.from_minutes = int(self.from_minutes_box.get())
+        self.master.store.to_minutes = int(self.to_minutes_box.get())
         self.master.next_screen()
     
     def set_values(self):
@@ -158,34 +184,55 @@ class DateTimePicker(ctk.CTkToplevel):
         
         self.title("Pick a Data and Time")
         self.attributes("-topmost", True)
+        self.minsize(width=360, height=360)
+        self.geometry("360x360")
+        self.maxsize(width=360, height=360)
         self.bind("<Destroy>", self.on_destroy)
         
         # Date picker
         self.calendar = Calendar(self)
-        self.calendar.pack(padx=10, pady=10)
+        self.calendar.pack(padx=20, pady=20, fill='both', expand=True)
         
         # Time picker
-        self.time_frame = ctk.CTkFrame(self)
+        self.time_frame = ctk.CTkFrame(self, fg_color='transparent')
         self.time_frame.pack(padx=10, pady=5)
         
         self.current_time = datetime.now().time()
-        self.hour_var = ctk.StringVar(value=self.current_time.hour)
-        self.minute_var = ctk.StringVar(value=self.current_time.minute)
+        # self.hour_var = ctk.StringVar(value=self.current_time.hour)
+        # self.minute_var = ctk.StringVar(value=self.current_time.minute)
         
         ctk.CTkLabel(self.time_frame, text="Hour:").grid(row=0, column=0, padx=(0, 10))
-        ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hour_var, width=5).grid(row=0, column=1)
         
-        ctk.CTkLabel(self.time_frame, text="Minute:").grid(row=0, column=2, padx=(10, 0))
-        ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minute_var, width=5).grid(row=0, column=3)
+        
+        self.hour_box = IntSpinbox(master=self.time_frame, from_=0, to=23, initial_val=self.current_time.hour)
+        self.hour_box.grid(row=0, column=1)
+        # ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hour_var, width=5, validate='key', validatecommand=(self.register(self.validate_hours), '%P'))
+        
+        ctk.CTkLabel(self.time_frame, text="Minute:").grid(row=0, column=2, padx=(20, 10))
+        self.minute_box = IntSpinbox(master=self.time_frame, from_=0, to=23, initial_val=self.current_time.minute)
+        self.minute_box.grid(row=0, column=3)
+        # ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minute_var, width=5, validate='key', validatecommand=(self.register(self.validate_minutes, '%P'))).grid(row=0, column=3)
         
         ctk.CTkButton(self, text="OK", command=self.on_ok).pack(pady=10)
+
+    def validate_hours(self, P):
+        if P.strip() == "" or (P.isdigit() and int(P) in range(0, 24)):
+            return True
+        else:
+            return False
+    
+    def validate_minutes(self, P):
+        if P.strip() == "" or (P.isdigit() and int(P) in range(0, 60)):
+            return True
+        else:
+            return False
 
     def on_ok(self):
         self.destroy()
     
     def on_destroy(self, event):
-        if self.hour_var.get() == "":
-            self.hour_var.set(self.current_time.hour)
-        if self.minute_var.get() == "":
-            self.minute_var.set(self.current_time.minute)
+        if self.hour_box.get() == "":
+            self.hour_box.set(self.current_time.hour)
+        if self.minute_box.get() == "":
+            self.minute_box.set(self.current_time.minute)
         self.date_time = (self.calendar.selection_get(), int(self.hour_var.get()), int(self.minute_var.get()))

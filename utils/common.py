@@ -1,6 +1,7 @@
 from enum import Enum
 import customtkinter as ctk
 from PIL import Image
+import sys
 
 class Screen(Enum):
     HOME="home"
@@ -26,17 +27,16 @@ class LongitudeRef(Enum):
 class FloatEntry(ctk.CTkEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        vcmd = (self.register(self.validate),'%P')
-        self.configure(validate="all", validatecommand=vcmd)
+        self.configure(validate="all", validatecommand=(self.register(self.validate),'%P'))
 
     def validate(self, text):
-        if (
-            all(char in "0123456789.-" for char in text) and  # all characters are valid
-            "-" not in text[1:] and # "-" is the first character or not present
-            text.count(".") <= 1): # only 0 or 1 periods
-                return True
-        else:
+        if not text:
+            return True
+        try:
+            value = float(text)
+        except ValueError:
             return False
+        return 0 <= value <= 90
 
 class FinalImage:
     image_path: str
@@ -47,3 +47,93 @@ class FinalImage:
         self.image_path = image_path
         self.image = image
         self.exif_bytes = image
+
+class IntSpinbox(ctk.CTkFrame):
+    def __init__(self, *args,
+                 width: int = 100,
+                 height: int = 32,
+                 step_size: int = 1,
+                 command = None,
+                 from_: int = 0,
+                 to: int = sys.maxsize,
+                 initial_val: int = 0,
+                 **kwargs):
+        super().__init__(*args, width=width, height=height, **kwargs)
+
+        self.step_size = step_size
+        self.command = command
+        self.min = from_
+        self.max = to
+
+        self.configure(fg_color=("gray78", "gray28"))  # set frame color
+
+        self.grid_columnconfigure((0, 2), weight=0)  # buttons don't expand
+        self.grid_columnconfigure(1, weight=1)  # entry expands
+
+        self.subtract_button = ctk.CTkButton(self, text="-", width=height-6, height=height-6,
+                                                       command=self.subtract_button_callback)
+        self.subtract_button.grid(row=0, column=0, padx=(3, 0), pady=3)
+
+        self.entry = ctk.CTkEntry(self, width=width-(2*height), height=height-6, border_width=0, justify='center', validate="key", validatecommand=(self.register(self.validate), '%P'))
+        self.entry.grid(row=0, column=1, columnspan=1, padx=3, pady=3, sticky="ew")
+
+        self.add_button = ctk.CTkButton(self, text="+", width=height-6, height=height-6,
+                                                  command=self.add_button_callback)
+        self.add_button.grid(row=0, column=2, padx=(0, 3), pady=3)
+
+        # default value
+        self.entry.insert(0, str(initial_val))
+    
+    def validate(self, inp):
+        if not inp:
+            return True
+        try:
+            value = int(inp)
+        except ValueError:
+            return False
+        return self.min <= value <= self.max
+
+    def add_button_callback(self):
+        if self.command is not None:
+            self.command()
+        try:
+            if self.entry.get() == "":
+                value = 0
+            else:
+                value = int(self.entry.get()) + self.step_size
+            if value > self.max:
+                self.add_button.configure(state=ctk.DISABLED)
+                return
+            self.subtract_button.configure(state=ctk.NORMAL)
+            self.entry.delete(0, "end")
+            self.entry.insert(0, value)
+        except ValueError:
+            return
+
+    def subtract_button_callback(self):
+        if self.command is not None:
+            self.command()
+        try:
+            if self.entry.get() == "":
+                self.subtract_button.configure(state=ctk.DISABLED)
+                value = 0
+            else:
+                value = int(self.entry.get()) - self.step_size
+            if value < self.min:
+                self.subtract_button.configure(state=ctk.DISABLED)
+                return
+            self.add_button.configure(state=ctk.NORMAL)
+            self.entry.delete(0, "end")
+            self.entry.insert(0, value)
+        except ValueError:
+            return
+
+    def get(self):
+        try:
+            return int(self.entry.get())
+        except ValueError:
+            return None
+
+    def set(self, value: int):
+        self.entry.delete(0, "end")
+        self.entry.insert(0, str(int(value)))
