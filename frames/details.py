@@ -30,7 +30,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.render_address_widget()
         self.render_pic_name_corner_widget()
         self.render_process_btn()
-        self.set_values()
+        # self.set_values()
     
     def render_process_btn(self):
         self.process_btn = ctk.CTkButton(
