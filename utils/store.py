@@ -1,6 +1,6 @@
 import sys
 sys.path.insert(0,"./")
-from common import FinalImage, Screen, LatitudeRef, LongitudeRef
+from common import FinalImage, Screen, LatitudeRef, LongitudeRef, Corner
 from datetime import datetime
 from typing import List
 from PIL import Image
@@ -19,6 +19,7 @@ class Store:
     pic_name: str = None
     from_minutes: int = 0
     to_minutes: int = 0
+    corner: Corner = Corner.BOTTOM_RIGHT
     
     def __new__(self, *args, **kwargs):
         if not self._instance:
@@ -36,7 +37,8 @@ class Store:
             "longitude": {
                 "deg": self.longitude_deg,
                 "ref": self.longitude_ref
-            }
+            },
+            "address": self.address
         }
         
     def insert_final_image(self, image_path: str, image: Image.Image, exif_bytes: bytes):

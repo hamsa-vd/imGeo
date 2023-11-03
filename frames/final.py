@@ -5,7 +5,7 @@ import piexif
 import os
 import sys
 sys.path.insert(0, "../utils")
-from common import FinalImage
+from common import FinalImage,Corner
 from datetime import timedelta
 import random
 
@@ -32,7 +32,8 @@ class FinalFrame(ctk.CTkFrame):
                 longitude=f"{longitude}{self.master.store.longitude_ref}",
                 address=self.master.store.address,
                 pic_name=self.master.store.pic_name,
-                filepath=image_path
+                filepath=image_path,
+                corner=self.master.store.corner
             )
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
@@ -51,8 +52,10 @@ class FinalFrame(ctk.CTkFrame):
         random_seconds = random.randint(0, 60)
         return last.replace(second=random_seconds) + timedelta(minutes=random_minutes)
     
-    def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name):
-        text = f"{date}\n{latitude} {longitude}\n{address}\n{pic_name}"
+    def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name, corner):
+        text = f"{date}\n{latitude} {longitude}\n{address}"
+        if pic_name is not None and pic_name != "":
+            text += f"\n{pic_name}"
         width, height = image.size
 
         long_line = max(text.split("\n"), key=len)
@@ -68,16 +71,35 @@ class FinalFrame(ctk.CTkFrame):
             text_width = draw.textlength(long_line, font=font)
 
         text_block_height = font.size * len(text.split("\n"))
-        position = (10, height - text_block_height - 10)
+        if corner == Corner.TOP_LEFT:
+            position = (10, 10)
+        elif corner == Corner.TOP_RIGHT:
+            position = (width - text_width - 10, 10)
+        elif corner == Corner.BOTTOM_LEFT:
+            position = (10, height - text_block_height - 10)
+        else:
+            position = (width - text_width - 10, height - text_block_height - 10)
+        # position = (10, height - text_block_height - 10)
         
-        rectangle_position = (position[0], position[1], position[0] + text_width, position[1] + text_block_height)
-        rectangle = Image.new('RGBA', image.size, (0, 0, 0, 0))
-        rectangle_draw = ImageDraw.Draw(rectangle)
-        rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 64)) 
+        # rectangle_position = (position[0] - 10, position[1] - 10, position[0] + text_width + 10, position[1] + text_block_height + 10)
+        # rectangle = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        # rectangle_draw = ImageDraw.Draw(rectangle)
+        # rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 64)) 
+        # image.paste(rectangle, mask=rectangle)
         
-        image.paste(rectangle, mask=rectangle)
+        lines = text.split("\n")
+        y_text = position[1]
+        for line in lines:
+            line_width = draw.textlength(line, font=font)
+            line_height = font.size
+            if corner in [Corner.TOP_RIGHT, Corner.BOTTOM_RIGHT]:
+                x_text = width - line_width - 10
+            else:
+                x_text = position[0]
+            draw.text((x_text, y_text), line, font=font, fill="white")
+            y_text += line_height
         
-        draw.text(position, text, font=font, fill="white")
+        # draw.text(position, text, font=font, fill="white")
     
     def build_exif_bytes(self, dt, latitude, longitude):
         exif_dict = {

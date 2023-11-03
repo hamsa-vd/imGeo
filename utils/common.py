@@ -23,7 +23,24 @@ class LongitudeRef(Enum):
     def values(self):
         return [el.value for el in self]
 
+    
 
+class Corner(Enum):
+    TOP_LEFT="Top Left"
+    TOP_RIGHT="Top Right"
+    BOTTOM_LEFT="Bottom Left"
+    BOTTOM_RIGHT="Bottom Right"
+    
+    @classmethod
+    def values(self):
+        return [el.value for el in self]
+    
+    @classmethod
+    def from_string(self, val):
+        for mem in self:
+            if mem.value == val:
+                return mem
+        return val
 class FloatEntry(ctk.CTkEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -131,10 +148,11 @@ class IntSpinbox(ctk.CTkFrame):
 
     def get(self):
         try:
-            return int(self.entry.get())
+            value = int(self.entry.get())
         except ValueError:
             return None
-
+        return value
+    
     def set(self, value: int):
         self.entry.delete(0, "end")
         self.entry.insert(0, str(int(value)))

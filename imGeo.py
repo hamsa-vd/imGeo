@@ -31,7 +31,22 @@ class LongitudeRef(Enum):
     def values(self):
         return [el.value for el in self]
 
-
+class Corner(Enum):
+    TOP_LEFT="Top Left"
+    TOP_RIGHT="Top Right"
+    BOTTOM_LEFT="Bottom Left"
+    BOTTOM_RIGHT="Bottom Right"
+    
+    @classmethod
+    def values(self):
+        return [el.value for el in self]
+    
+    @classmethod
+    def from_string(self, val):
+        for mem in self:
+            if mem.value == val:
+                return mem
+        return val
 class FloatEntry(ctk.CTkEntry):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -139,10 +154,11 @@ class IntSpinbox(ctk.CTkFrame):
 
     def get(self):
         try:
-            return int(self.entry.get())
+            value = int(self.entry.get())
         except ValueError:
             return None
-
+        return value
+    
     def set(self, value: int):
         self.entry.delete(0, "end")
         self.entry.insert(0, str(int(value)))
@@ -175,6 +191,7 @@ class Store:
     pic_name: str = None
     from_minutes: int = 0
     to_minutes: int = 0
+    corner: Corner = Corner.BOTTOM_RIGHT
     
     def __new__(self, *args, **kwargs):
         if not self._instance:
@@ -192,7 +209,8 @@ class Store:
             "longitude": {
                 "deg": self.longitude_deg,
                 "ref": self.longitude_ref
-            }
+            },
+            "address": self.address
         }
         
     def insert_final_image(self, image_path: str, image: Image.Image, exif_bytes: bytes):
@@ -206,7 +224,6 @@ class Store:
     
     def reset(self):
         self._instance = Store()
-
 
 class HomeFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -295,7 +312,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.render_latitude_widget()
         self.render_longitude_widget()
         self.render_address_widget()
-        self.render_pic_name_widget()
+        self.render_pic_name_corner_widget()
         self.render_process_btn()
         self.set_values()
     
@@ -309,15 +326,24 @@ class DetailsFrame(ctk.CTkFrame):
         self.process_btn.grid(row = self.current_row, column=0, columnspan=2, pady=(20, 0))
         self.current_row += 1
     
-    def render_pic_name_widget(self):
+    def render_pic_name_corner_widget(self):
         ctk.CTkLabel(
             master=self,
             text="Enter the Pic Name",
             anchor="w"
         ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.pic_name = ctk.CTkEntry(master=self, placeholder_text="Pic name here...")
-        self.pic_name.grid(row=self.current_row+1, column=0, columnspan=2, sticky="EW")
+        self.pic_name.grid(row=self.current_row+1, column=0, sticky="EW")
         self.pic_name.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        
+        ctk.CTkLabel(
+            master=self,
+            text="Select Corner",
+            anchor="w"
+        ).grid(row=self.current_row, column=1, sticky="W", pady=(20, 0), padx=(10, 0))
+        self.corner = ctk.CTkComboBox(master=self, values=Corner.values(), state='readonly')
+        self.corner.set(Corner.BOTTOM_RIGHT.value)
+        self.corner.grid(row=self.current_row+1, column=1, sticky="W", padx=(10, 0))
         self.current_row += 2
     
     def render_address_widget(self):
@@ -347,7 +373,8 @@ class DetailsFrame(ctk.CTkFrame):
         self.longitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
 
         
-        self.longitude_ref = ctk.CTkComboBox(master=self, values=LongitudeRef.values(), width=80)
+        self.longitude_ref = ctk.CTkComboBox(master=self, values=LongitudeRef.values(), width=80, state='readonly')
+        self.longitude_ref.set(LongitudeRef.E.value)
         self.longitude_ref.grid(row=self.current_row + 1, column=1, padx=(10, 0), sticky="W")
         self.current_row += 2
     
@@ -365,7 +392,8 @@ class DetailsFrame(ctk.CTkFrame):
         self.latitude_deg.grid(row=self.current_row+1, column=0, sticky="W")
         self.latitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
         
-        self.latitude_ref = ctk.CTkComboBox(master=self, values=LatitudeRef.values(), width=80)
+        self.latitude_ref = ctk.CTkComboBox(master=self, values=LatitudeRef.values(), width=80, state='readonly')
+        self.latitude_ref.set(LatitudeRef.N.value)
         self.latitude_ref.grid(row=self.current_row+1, column=1, padx=(10, 0), sticky="W")
         self.current_row += 2
     
@@ -398,7 +426,10 @@ class DetailsFrame(ctk.CTkFrame):
         return f"Selected: {date} {hour:02}:{minute:02}"
     
     def pick_datetime(self):
-        picker = DateTimePicker(self.master)
+        selected_dt = datetime.now()
+        if self.master.store.datetime is not None:
+            selected_dt = self.master.store.datetime
+        picker = DateTimePicker(parent=self.master, dt=selected_dt)
         self.master.wait_window(picker)
         date, hour, minute = picker.date_time
         self.date_label.set(self.format_datetime(date=date, hour=hour, minute=minute))
@@ -418,7 +449,8 @@ class DetailsFrame(ctk.CTkFrame):
             self.longitude_deg.get() and
             self.address.get() and
             self.latitude_ref.get() and
-            self.longitude_ref.get()):
+            self.longitude_ref.get() and
+            self.corner.get()):
             self.process_btn.configure(state=ctk.NORMAL)
         else:
             self.process_btn.configure(state=ctk.DISABLED)
@@ -439,6 +471,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.address = self.address.get().strip()
         if self.pic_name.get() and self.pic_name.get().strip() != "":
             self.master.store.pic_name = self.pic_name.get().strip()
+        self.master.store.corner = Corner.from_string(self.corner.get())
         self.master.store.from_minutes = int(self.from_minutes_box.get())
         self.master.store.to_minutes = int(self.to_minutes_box.get())
         self.master.next_screen()
@@ -452,7 +485,7 @@ class DetailsFrame(ctk.CTkFrame):
 
 
 class DateTimePicker(ctk.CTkToplevel):
-    def __init__(self, parent):
+    def __init__(self, parent, dt=datetime.now()):
         super().__init__(parent)
         
         self.title("Pick a Data and Time")
@@ -462,15 +495,19 @@ class DateTimePicker(ctk.CTkToplevel):
         self.maxsize(width=360, height=360)
         self.bind("<Destroy>", self.on_destroy)
         
+        self.dt = dt
+        self.date_time = None
+        self.current_time = dt.time()
+        
         # Date picker
         self.calendar = Calendar(self)
         self.calendar.pack(padx=20, pady=20, fill='both', expand=True)
+        self.calendar.selection_set(dt)
         
         # Time picker
         self.time_frame = ctk.CTkFrame(self, fg_color='transparent')
         self.time_frame.pack(padx=10, pady=5)
         
-        self.current_time = datetime.now().time()
         # self.hour_var = ctk.StringVar(value=self.current_time.hour)
         # self.minute_var = ctk.StringVar(value=self.current_time.minute)
         
@@ -482,7 +519,7 @@ class DateTimePicker(ctk.CTkToplevel):
         # ttk.Spinbox(self.time_frame, from_=0, to=23, textvariable=self.hour_var, width=5, validate='key', validatecommand=(self.register(self.validate_hours), '%P'))
         
         ctk.CTkLabel(self.time_frame, text="Minute:").grid(row=0, column=2, padx=(20, 10))
-        self.minute_box = IntSpinbox(master=self.time_frame, from_=0, to=23, initial_val=self.current_time.minute)
+        self.minute_box = IntSpinbox(master=self.time_frame, from_=0, to=60, initial_val=self.current_time.minute)
         self.minute_box.grid(row=0, column=3)
         # ttk.Spinbox(self.time_frame, from_=0, to=59, textvariable=self.minute_var, width=5, validate='key', validatecommand=(self.register(self.validate_minutes, '%P'))).grid(row=0, column=3)
         
@@ -501,14 +538,17 @@ class DateTimePicker(ctk.CTkToplevel):
             return False
 
     def on_ok(self):
-        self.destroy()
-    
-    def on_destroy(self, event):
         if self.hour_box.get() == "":
             self.hour_box.set(self.current_time.hour)
         if self.minute_box.get() == "":
             self.minute_box.set(self.current_time.minute)
-        self.date_time = (self.calendar.selection_get(), int(self.hour_var.get()), int(self.minute_var.get()))
+
+        self.date_time = (self.calendar.selection_get(), int(self.hour_box.get()), int(self.minute_box.get()))
+        self.destroy()
+    
+    def on_destroy(self, event):
+        if self.date_time is None:
+            self.date_time = (self.dt.date(), self.dt.time().hour, self.dt.time().minute)
 
 class FinalFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -533,7 +573,8 @@ class FinalFrame(ctk.CTkFrame):
                 longitude=f"{longitude}{self.master.store.longitude_ref}",
                 address=self.master.store.address,
                 pic_name=self.master.store.pic_name,
-                filepath=image_path
+                filepath=image_path,
+                corner=self.master.store.corner
             )
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
@@ -552,8 +593,10 @@ class FinalFrame(ctk.CTkFrame):
         random_seconds = random.randint(0, 60)
         return last.replace(second=random_seconds) + timedelta(minutes=random_minutes)
     
-    def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name):
-        text = f"{date}\n{latitude} {longitude}\n{address}\n{pic_name}"
+    def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name, corner):
+        text = f"{date}\n{latitude} {longitude}\n{address}"
+        if pic_name is not None and pic_name != "":
+            text += f"\n{pic_name}"
         width, height = image.size
 
         long_line = max(text.split("\n"), key=len)
@@ -569,16 +612,35 @@ class FinalFrame(ctk.CTkFrame):
             text_width = draw.textlength(long_line, font=font)
 
         text_block_height = font.size * len(text.split("\n"))
-        position = (10, height - text_block_height - 10)
+        if corner == Corner.TOP_LEFT:
+            position = (10, 10)
+        elif corner == Corner.TOP_RIGHT:
+            position = (width - text_width - 10, 10)
+        elif corner == Corner.BOTTOM_LEFT:
+            position = (10, height - text_block_height - 10)
+        else:
+            position = (width - text_width - 10, height - text_block_height - 10)
+        # position = (10, height - text_block_height - 10)
         
-        rectangle_position = (position[0], position[1], position[0] + text_width, position[1] + text_block_height)
-        rectangle = Image.new('RGBA', image.size, (0, 0, 0, 0))
-        rectangle_draw = ImageDraw.Draw(rectangle)
-        rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 64)) 
+        # rectangle_position = (position[0] - 10, position[1] - 10, position[0] + text_width + 10, position[1] + text_block_height + 10)
+        # rectangle = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        # rectangle_draw = ImageDraw.Draw(rectangle)
+        # rectangle_draw.rectangle(rectangle_position, fill=(0, 0, 0, 64)) 
+        # image.paste(rectangle, mask=rectangle)
         
-        image.paste(rectangle, mask=rectangle)
+        lines = text.split("\n")
+        y_text = position[1]
+        for line in lines:
+            line_width = draw.textlength(line, font=font)
+            line_height = font.size
+            if corner in [Corner.TOP_RIGHT, Corner.BOTTOM_RIGHT]:
+                x_text = width - line_width - 10
+            else:
+                x_text = position[0]
+            draw.text((x_text, y_text), line, font=font, fill="white")
+            y_text += line_height
         
-        draw.text(position, text, font=font, fill="white")
+        # draw.text(position, text, font=font, fill="white")
     
     def build_exif_bytes(self, dt, latitude, longitude):
         exif_dict = {
