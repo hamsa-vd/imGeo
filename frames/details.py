@@ -30,7 +30,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.render_address_widget()
         self.render_pic_name_corner_widget()
         self.render_process_btn()
-        # self.set_values()
+        self.set_values()
     
     def render_process_btn(self):
         self.process_btn = ctk.CTkButton(
@@ -69,11 +69,19 @@ class DetailsFrame(ctk.CTkFrame):
             anchor="w"
         ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.address = ctk.CTkEntry(master=self, placeholder_text="Adress here...")
-        self.address.grid(row=self.current_row + 1, column=0, columnspan=2, sticky="EW")
+        self.address.grid(row=self.current_row + 1, column=0, sticky="EW")
         self.address.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        
+        ctk.CTkLabel(
+            master=self,
+            text="Font Size",
+            anchor="w"
+        ).grid(row=self.current_row, column=1, sticky="W", pady=(20, 0), padx=(10, 0))
+        self.font_size = IntSpinbox(master=self, from_=0, to=200, initial_val=0)
+        self.font_size.grid(row=self.current_row+1, column=1, sticky="W", padx=(10, 0))
+        
         self.current_row += 2
-    
-    
+
     def render_longitude_widget(self):
         ctk.CTkLabel(
             master=self,
@@ -187,6 +195,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.address = self.address.get().strip()
         if self.pic_name.get() and self.pic_name.get().strip() != "":
             self.master.store.pic_name = self.pic_name.get().strip()
+        self.master.store.font_size = int(self.font_size.get())
         self.master.store.corner = Corner.from_string(self.corner.get())
         self.master.store.from_minutes = int(self.from_minutes_box.get())
         self.master.store.to_minutes = int(self.to_minutes_box.get())

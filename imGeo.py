@@ -9,7 +9,7 @@ from typing import List
 from enum import Enum
 import os
 import sys
-import random
+import secrets
 
 class Screen(Enum):
     HOME="home"
@@ -192,6 +192,7 @@ class Store:
     from_minutes: int = 0
     to_minutes: int = 0
     corner: Corner = Corner.BOTTOM_RIGHT
+    font_size: int = 0
     
     def __new__(self, *args, **kwargs):
         if not self._instance:
@@ -353,11 +354,19 @@ class DetailsFrame(ctk.CTkFrame):
             anchor="w"
         ).grid(row=self.current_row, column=0, sticky="W", pady=(20, 0))
         self.address = ctk.CTkEntry(master=self, placeholder_text="Adress here...")
-        self.address.grid(row=self.current_row + 1, column=0, columnspan=2, sticky="EW")
+        self.address.grid(row=self.current_row + 1, column=0, sticky="EW")
         self.address.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        
+        ctk.CTkLabel(
+            master=self,
+            text="Font Size",
+            anchor="w"
+        ).grid(row=self.current_row, column=1, sticky="W", pady=(20, 0), padx=(10, 0))
+        self.font_size = IntSpinbox(master=self, from_=0, to=200, initial_val=0)
+        self.font_size.grid(row=self.current_row+1, column=1, sticky="W", padx=(10, 0))
+        
         self.current_row += 2
-    
-    
+
     def render_longitude_widget(self):
         ctk.CTkLabel(
             master=self,
@@ -471,6 +480,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.master.store.address = self.address.get().strip()
         if self.pic_name.get() and self.pic_name.get().strip() != "":
             self.master.store.pic_name = self.pic_name.get().strip()
+        self.master.store.font_size = int(self.font_size.get())
         self.master.store.corner = Corner.from_string(self.corner.get())
         self.master.store.from_minutes = int(self.from_minutes_box.get())
         self.master.store.to_minutes = int(self.to_minutes_box.get())
@@ -556,9 +566,12 @@ class FinalFrame(ctk.CTkFrame):
         self.master = master
         self.render_widgets()
         self.process_images()
+
+    def secure_random_number(self, start, end):
+        return secrets.randbelow(end - start) + start
     
     def process_images(self):
-        last_datetime = self.master.store.datetime.replace(second=random.randint(0, 60))
+        last_datetime = self.master.store.datetime.replace(second=self.secure_random_number(0, 60))
         for image_path in self.master.store.images:
             image = Image.open(image_path)
             date = last_datetime
@@ -574,7 +587,8 @@ class FinalFrame(ctk.CTkFrame):
                 address=self.master.store.address,
                 pic_name=self.master.store.pic_name,
                 filepath=image_path,
-                corner=self.master.store.corner
+                corner=self.master.store.corner,
+                font_s=self.master.store.font_size
             )
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
@@ -584,23 +598,24 @@ class FinalFrame(ctk.CTkFrame):
         value_str = f"{value:.8f}"
         whole_part, decimal_part = value_str.split('.')
         first_five_decimals = decimal_part[:5]
-        last_three_random = f"{random.randint(0, 999):03d}"
+        last_three_random = f"{self.secure_random_number(0, 999):03d}"
         new_value_str = f"{whole_part}.{first_five_decimals}{last_three_random}"
         return float(new_value_str)
     
     def get_rand_datetime(self, last):
-        random_minutes = random.randint(self.master.store.from_minutes, self.master.store.to_minutes)
-        random_seconds = random.randint(0, 60)
+        random_minutes = self.secure_random_number(self.master.store.from_minutes, self.master.store.to_minutes)
+        random_seconds = self.secure_random_number(0, 60)
         return last.replace(second=random_seconds) + timedelta(minutes=random_minutes)
     
-    def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name, corner):
+    def imprint_info_on_image(self, image, date, latitude, longitude, address, filepath, pic_name, corner, font_s):
         text = f"{date}\n{latitude} {longitude}\n{address}"
         if pic_name is not None and pic_name != "":
             text += f"\n{pic_name}"
         width, height = image.size
 
         long_line = max(text.split("\n"), key=len)
-        font_size = int(width / len(long_line)) * (8 / 7)
+        ratio = 8 / 7 if width > height else 12 / 7
+        font_size = int(width / len(long_line)) * ratio
         font = ImageFont.truetype("arial.ttf", font_size)
         
         draw = ImageDraw.Draw(image)
@@ -610,6 +625,9 @@ class FinalFrame(ctk.CTkFrame):
             font_size -= 1
             font = ImageFont.truetype("arial.ttf", font_size)
             text_width = draw.textlength(long_line, font=font)
+        
+        if(font_s != 0):
+            font = ImageFont.truetype("arial.ttf", font_s)
 
         text_block_height = font.size * len(text.split("\n"))
         if corner == Corner.TOP_LEFT:

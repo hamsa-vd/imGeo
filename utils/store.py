@@ -20,6 +20,7 @@ class Store:
     from_minutes: int = 0
     to_minutes: int = 0
     corner: Corner = Corner.BOTTOM_RIGHT
+    font_size: int = 0
     
     def __new__(self, *args, **kwargs):
         if not self._instance:
