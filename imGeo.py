@@ -224,7 +224,19 @@ class Store:
         return self.get_dict()
     
     def reset(self):
-        self._instance = Store()
+        self.images = []
+        self._final_images = []
+        self.datetime = None
+        self.latitude_deg = None
+        self.latitude_ref = LatitudeRef.N
+        self.longitude_deg = None
+        self.longitude_ref = LongitudeRef.E
+        self.address = None
+        self.pic_name = None
+        self.from_minutes = 0
+        self.to_minutes = 0
+        self.corner = Corner.BOTTOM_RIGHT
+        self.font_size = 0
 
 class HomeFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -235,6 +247,8 @@ class HomeFrame(ctk.CTkFrame):
         self.dnd_bind('<<DragEnter>>', self.validate_dragged_files)
         self.dnd_bind('<<Drop>>', self.drop)
 
+        self.count_label = ctk.CTkLabel(self, text="0 images uploaded")
+
         self.label = ctk.CTkLabel(self, text="Drag and Drop here")
         self.label.place(relx=0.5, rely=0.54, anchor=ctk.CENTER)
 
@@ -243,6 +257,18 @@ class HomeFrame(ctk.CTkFrame):
 
         self.upload_button = ctk.CTkButton(self, text="Upload", command=self.upload_images)
         self.upload_button.place(relx=0.5, rely=0.45, anchor=ctk.CENTER)
+        
+        self.go_button = ctk.CTkButton(self, text="Go", command=self.on_go, width=75)
+
+    def update_count_label(self, count):
+        self.count_label.place(relx=0.0, rely=0.0, x=10, y=10, anchor=ctk.NW)
+        self.count_label.configure(text=f"{count} images uploaded")
+
+    def show_go_btn(self):
+        self.go_button.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor=ctk.SE)
+
+    def on_go(self):
+        self.master.next_screen()
 
     def is_image_file(self, file_path):
         allowed_extensions = ['.jpg', '.jpeg', '.png']
@@ -275,8 +301,9 @@ class HomeFrame(ctk.CTkFrame):
             potential_images.append(file)
         potential_images = list(filter(lambda x: self.is_image_file(x), potential_images))
         if len(potential_images):
-            self.master.store.images = potential_images
-            self.master.next_screen()
+            self.master.store.images += potential_images
+            self.show_go_btn()
+            self.update_count_label(len(self.master.store.images))
         else:
             self.label.configure(text="Only image files are allowed!")
 
@@ -286,8 +313,9 @@ class HomeFrame(ctk.CTkFrame):
                 filetypes=[("Image files", "*.jpg;*.jpeg;*.png")]
             )
         if images and all(self.is_image_file(file) for file in images):
-            self.master.store.images = images
-            self.master.next_screen()
+            self.master.store.images += images
+            self.show_go_btn()
+            self.update_count_label(len(self.master.store.images))
 
 
 class DetailsFrame(ctk.CTkFrame):
@@ -473,6 +501,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.to_minutes_box.configure(from_=int(from_minutes))
     
     def process_images(self):
+        self.master.configure(cursor="watch")
         self.master.store.latitude_deg = float(self.latitude_deg.get())
         self.master.store.latitude_ref = self.latitude_ref.get()
         self.master.store.longitude_deg = float(self.longitude_deg.get())
@@ -592,6 +621,7 @@ class FinalFrame(ctk.CTkFrame):
             )
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
+        self.master.configure(cursor="")
         self.download_btn.configure(state=ctk.NORMAL)
     
     def randomize_last_three_decimals(self, value):
@@ -614,8 +644,7 @@ class FinalFrame(ctk.CTkFrame):
         width, height = image.size
 
         long_line = max(text.split("\n"), key=len)
-        ratio = 8 / 7 if width > height else 12 / 7
-        font_size = int(width / len(long_line)) * ratio
+        font_size = int(width / len(long_line)) * (8/7)
         font = ImageFont.truetype("arial.ttf", font_size)
         
         draw = ImageDraw.Draw(image)
@@ -720,7 +749,8 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
         super().__init__(*args, **kwargs)
         self.TkdndVersion = TkinterDnD._require(self)
 
-        self.title("Britian Energy Image")
+        self.title("imGeo")
+        self.iconbitmap("./assets/imGeo.ico")
         self.minsize(480, 640)
         self.geometry("480x640")
         self.maxsize(480, 760)
@@ -752,6 +782,7 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
             self.home_screen()
 
     def home_screen(self):
+        self.store.reset()
         self.store.current_screen = Screen.HOME
         self.clear_screen()
         

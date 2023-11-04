@@ -52,4 +52,16 @@ class Store:
         return self.get_dict()
     
     def reset(self):
-        self._instance = Store()
+        self.images = []
+        self._final_images = []
+        self.datetime = None
+        self.latitude_deg = None
+        self.latitude_ref = LatitudeRef.N
+        self.longitude_deg = None
+        self.longitude_ref = LongitudeRef.E
+        self.address = None
+        self.pic_name = None
+        self.from_minutes = 0
+        self.to_minutes = 0
+        self.corner = Corner.BOTTOM_RIGHT
+        self.font_size = 0

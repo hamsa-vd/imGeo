@@ -11,6 +11,8 @@ class HomeFrame(ctk.CTkFrame):
         self.dnd_bind('<<DragEnter>>', self.validate_dragged_files)
         self.dnd_bind('<<Drop>>', self.drop)
 
+        self.count_label = ctk.CTkLabel(self, text="0 images uploaded")
+
         self.label = ctk.CTkLabel(self, text="Drag and Drop here")
         self.label.place(relx=0.5, rely=0.54, anchor=ctk.CENTER)
 
@@ -19,6 +21,18 @@ class HomeFrame(ctk.CTkFrame):
 
         self.upload_button = ctk.CTkButton(self, text="Upload", command=self.upload_images)
         self.upload_button.place(relx=0.5, rely=0.45, anchor=ctk.CENTER)
+        
+        self.go_button = ctk.CTkButton(self, text="Go", command=self.on_go, width=75)
+
+    def update_count_label(self, count):
+        self.count_label.place(relx=0.0, rely=0.0, x=10, y=10, anchor=ctk.NW)
+        self.count_label.configure(text=f"{count} images uploaded")
+
+    def show_go_btn(self):
+        self.go_button.place(relx=1.0, rely=1.0, x=-10, y=-10, anchor=ctk.SE)
+
+    def on_go(self):
+        self.master.next_screen()
 
     def is_image_file(self, file_path):
         allowed_extensions = ['.jpg', '.jpeg', '.png']
@@ -51,8 +65,9 @@ class HomeFrame(ctk.CTkFrame):
             potential_images.append(file)
         potential_images = list(filter(lambda x: self.is_image_file(x), potential_images))
         if len(potential_images):
-            self.master.store.images = potential_images
-            self.master.next_screen()
+            self.master.store.images += potential_images
+            self.show_go_btn()
+            self.update_count_label(len(self.master.store.images))
         else:
             self.label.configure(text="Only image files are allowed!")
 
@@ -62,5 +77,6 @@ class HomeFrame(ctk.CTkFrame):
                 filetypes=[("Image files", "*.jpg;*.jpeg;*.png")]
             )
         if images and all(self.is_image_file(file) for file in images):
-            self.master.store.images = images
-            self.master.next_screen()
+            self.master.store.images += images
+            self.show_go_btn()
+            self.update_count_label(len(self.master.store.images))

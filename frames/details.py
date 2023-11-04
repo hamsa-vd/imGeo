@@ -30,7 +30,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.render_address_widget()
         self.render_pic_name_corner_widget()
         self.render_process_btn()
-        self.set_values()
+        # self.set_values()
     
     def render_process_btn(self):
         self.process_btn = ctk.CTkButton(
@@ -188,6 +188,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.to_minutes_box.configure(from_=int(from_minutes))
     
     def process_images(self):
+        self.master.configure(cursor="watch")
         self.master.store.latitude_deg = float(self.latitude_deg.get())
         self.master.store.latitude_ref = self.latitude_ref.get()
         self.master.store.longitude_deg = float(self.longitude_deg.get())

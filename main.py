@@ -16,7 +16,8 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
         super().__init__(*args, **kwargs)
         self.TkdndVersion = TkinterDnD._require(self)
 
-        self.title("Britian Energy Image")
+        self.title("imGeo")
+        self.iconbitmap("./assets/imGeo.ico")
         self.minsize(480, 640)
         self.geometry("480x640")
         self.maxsize(480, 760)
@@ -48,6 +49,7 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
             self.home_screen()
 
     def home_screen(self):
+        self.store.reset()
         self.store.current_screen = Screen.HOME
         self.clear_screen()
         

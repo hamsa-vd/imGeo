@@ -41,6 +41,7 @@ class FinalFrame(ctk.CTkFrame):
             )
             exif_bytes = self.build_exif_bytes(dt=date, latitude=latitude, longitude=longitude)
             self.master.store.insert_final_image(image_path=image_path, image=image, exif_bytes=exif_bytes)
+        self.master.configure(cursor="")
         self.download_btn.configure(state=ctk.NORMAL)
     
     def randomize_last_three_decimals(self, value):
@@ -63,8 +64,7 @@ class FinalFrame(ctk.CTkFrame):
         width, height = image.size
 
         long_line = max(text.split("\n"), key=len)
-        ratio = 8 / 7 if width > height else 12 / 7
-        font_size = int(width / len(long_line)) * ratio
+        font_size = int(width / len(long_line)) * (8/7)
         font = ImageFont.truetype("arial.ttf", font_size)
         
         draw = ImageDraw.Draw(image)
