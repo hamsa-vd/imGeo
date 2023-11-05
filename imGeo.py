@@ -750,7 +750,7 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
         self.TkdndVersion = TkinterDnD._require(self)
 
         self.title("imGeo")
-        self.iconbitmap("./assets/imGeo.ico")
+        # self.iconbitmap("./assets/imGeo.ico")
         self.minsize(480, 640)
         self.geometry("480x640")
         self.maxsize(480, 760)
