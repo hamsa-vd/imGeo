@@ -62,9 +62,16 @@ class FinalFrame(ctk.CTkFrame):
         if pic_name is not None and pic_name != "":
             text += f"\n{pic_name}"
         width, height = image.size
+        
+        ratio = 8 / 7
+        if (width / height) > 1.25:
+            ratio = 5 / 7
+        if (height / width) > 1.4:
+            ratio = 10 / 7
+
 
         long_line = max(text.split("\n"), key=len)
-        font_size = int(width / len(long_line)) * (8/7)
+        font_size = int((width / len(long_line)) * ratio)
         font = ImageFont.truetype("arial.ttf", font_size)
         
         draw = ImageDraw.Draw(image)
