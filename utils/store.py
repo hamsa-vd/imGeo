@@ -12,9 +12,9 @@ class Store:
     _final_images: List[FinalImage] = []
     datetime: datetime = None
     latitude_deg: float = None
-    latitude_ref: LatitudeRef = LatitudeRef.N
+    latitude_ref: str = LatitudeRef.N.value
     longitude_deg: float = None
-    longitude_ref: LongitudeRef = LongitudeRef.E
+    longitude_ref: str = LongitudeRef.E.value
     address: str = None
     pic_name: str = None
     from_minutes: int = 0
@@ -56,9 +56,9 @@ class Store:
         self._final_images = []
         self.datetime = None
         self.latitude_deg = None
-        self.latitude_ref = LatitudeRef.N
+        self.latitude_ref = LatitudeRef.N.value
         self.longitude_deg = None
-        self.longitude_ref = LongitudeRef.E
+        self.longitude_ref = LongitudeRef.E.value
         self.address = None
         self.pic_name = None
         self.from_minutes = 0

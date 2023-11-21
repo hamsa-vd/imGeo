@@ -49,7 +49,10 @@ class App(ctk.CTk, TkinterDnD.DnDWrapper):
             self.home_screen()
 
     def home_screen(self):
-        self.store.reset()
+        if self.store.current_screen == Screen.DETAILS:
+            self.details_frame.save()
+        if self.store.current_screen == Screen.FINAL:
+            self.store.reset()
         self.store.current_screen = Screen.HOME
         self.clear_screen()
         

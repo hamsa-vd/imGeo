@@ -23,6 +23,10 @@ class HomeFrame(ctk.CTkFrame):
         self.upload_button.place(relx=0.5, rely=0.45, anchor=ctk.CENTER)
         
         self.go_button = ctk.CTkButton(self, text="Go", command=self.on_go, width=75)
+        
+        if len(self.master.store.images) != 0:
+            self.update_count_label(len(self.master.store.images))
+            self.show_go_btn()
 
     def update_count_label(self, count):
         self.count_label.place(relx=0.0, rely=0.0, x=10, y=10, anchor=ctk.NW)

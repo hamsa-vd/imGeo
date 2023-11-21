@@ -1,4 +1,7 @@
 import customtkinter as ctk
+from customtkinter import ThemeManager
+from PIL import Image, ImageTk
+from tkinter import Canvas, Scrollbar, PhotoImage
 from tkcalendar import Calendar
 from datetime import datetime, date, time
 import sys
@@ -33,13 +36,22 @@ class DetailsFrame(ctk.CTkFrame):
         # self.set_values()
     
     def render_process_btn(self):
+        
+        self.arrage_image_btn = ctk.CTkButton(
+            master=self,
+            text="Reorder Images",
+            command=self.reorder_images
+        )
+        self.arrage_image_btn.grid(row= self.current_row, column=0, pady=(20, 0))
+        
         self.process_btn = ctk.CTkButton(
             master=self,
             text="Process Images",
             command=self.process_images,
             state=ctk.DISABLED
         )
-        self.process_btn.grid(row = self.current_row, column=0, columnspan=2, pady=(20, 0))
+        self.process_btn.grid(row = self.current_row, column=1, pady=(20, 0))
+
         self.current_row += 1
     
     def render_pic_name_corner_widget(self):
@@ -51,6 +63,8 @@ class DetailsFrame(ctk.CTkFrame):
         self.pic_name = ctk.CTkEntry(master=self, placeholder_text="Pic name here...")
         self.pic_name.grid(row=self.current_row+1, column=0, sticky="EW")
         self.pic_name.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        if self.master.store.pic_name is not None:
+            self.pic_name.insert(0, self.master.store.pic_name)
         
         ctk.CTkLabel(
             master=self,
@@ -58,7 +72,7 @@ class DetailsFrame(ctk.CTkFrame):
             anchor="w"
         ).grid(row=self.current_row, column=1, sticky="W", pady=(20, 0), padx=(10, 0))
         self.corner = ctk.CTkComboBox(master=self, values=Corner.values(), state='readonly')
-        self.corner.set(Corner.BOTTOM_RIGHT.value)
+        self.corner.set(self.master.store.corner.value)
         self.corner.grid(row=self.current_row+1, column=1, sticky="W", padx=(10, 0))
         self.current_row += 2
     
@@ -71,13 +85,18 @@ class DetailsFrame(ctk.CTkFrame):
         self.address = ctk.CTkEntry(master=self, placeholder_text="Adress here...")
         self.address.grid(row=self.current_row + 1, column=0, sticky="EW")
         self.address.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        if self.master.store.address is not None:
+            self.address.insert(0, self.master.store.address)
         
+        initial_font_size = 0
+        if self.master.store.font_size != 0:
+            initial_font_size = self.master.store.font_size 
         ctk.CTkLabel(
             master=self,
             text="Font Size",
             anchor="w"
         ).grid(row=self.current_row, column=1, sticky="W", pady=(20, 0), padx=(10, 0))
-        self.font_size = IntSpinbox(master=self, from_=0, to=200, initial_val=0)
+        self.font_size = IntSpinbox(master=self, from_=0, to=200, initial_val=initial_font_size)
         self.font_size.grid(row=self.current_row+1, column=1, sticky="W", padx=(10, 0))
         
         self.current_row += 2
@@ -95,10 +114,12 @@ class DetailsFrame(ctk.CTkFrame):
         )
         self.longitude_deg.grid(row=self.current_row + 1, column=0, sticky="W")
         self.longitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        if self.master.store.longitude_deg is not None:
+            self.longitude_deg.insert(0, self.master.store.longitude_deg)
 
         
         self.longitude_ref = ctk.CTkComboBox(master=self, values=LongitudeRef.values(), width=80, state='readonly')
-        self.longitude_ref.set(LongitudeRef.E.value)
+        self.longitude_ref.set(self.master.store.longitude_ref)
         self.longitude_ref.grid(row=self.current_row + 1, column=1, padx=(10, 0), sticky="W")
         self.current_row += 2
     
@@ -115,9 +136,11 @@ class DetailsFrame(ctk.CTkFrame):
         )
         self.latitude_deg.grid(row=self.current_row+1, column=0, sticky="W")
         self.latitude_deg.bind("<KeyRelease>", lambda e: self.validate_inputs())
+        if self.master.store.latitude_deg is not None:
+            self.latitude_deg.insert(0, self.master.store.latitude_deg)
         
         self.latitude_ref = ctk.CTkComboBox(master=self, values=LatitudeRef.values(), width=80, state='readonly')
-        self.latitude_ref.set(LatitudeRef.N.value)
+        self.latitude_ref.set(self.master.store.latitude_ref)
         self.latitude_ref.grid(row=self.current_row+1, column=1, padx=(10, 0), sticky="W")
         self.current_row += 2
     
@@ -125,14 +148,21 @@ class DetailsFrame(ctk.CTkFrame):
         from_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
         from_minute_frame.grid(row=self.current_row, column=0, pady=(20, 0), sticky="EW")
         
+        from_min_initial_val = 1
+        if self.master.store.from_minutes != 0:
+            minute_initial_val = self.master.store.from_minutes
         ctk.CTkLabel(master=from_minute_frame, text="From mins").pack(padx=(0, 10), side=ctk.LEFT)
-        self.from_minutes_box = IntSpinbox(master=from_minute_frame, from_=0, to=2, initial_val=1, command=self.from_minutes_updated)
+        self.from_minutes_box = IntSpinbox(master=from_minute_frame, from_=0, to=2, initial_val=from_min_initial_val, command=self.from_minutes_updated)
         self.from_minutes_box.pack(side=ctk.LEFT)
         
         to_minute_frame = ctk.CTkFrame(self, fg_color='transparent')
         to_minute_frame.grid(row=self.current_row, column=1, pady=(20, 0), sticky='W')
+        
+        to_min_initial_val = 2
+        if self.master.store.to_minutes != 0:
+            to_min_initial_val = self.master.store.to_minutes
         ctk.CTkLabel(master=to_minute_frame, text="To mins").pack(padx=10, side=ctk.LEFT)
-        self.to_minutes_box = IntSpinbox(master=to_minute_frame, from_=1, to=60, initial_val=2, command=self.to_minutes_updated)
+        self.to_minutes_box = IntSpinbox(master=to_minute_frame, from_=1, to=60, initial_val=to_min_initial_val, command=self.to_minutes_updated)
         self.to_minutes_box.pack(side= ctk.LEFT)
         self.current_row += 1
     
@@ -187,20 +217,29 @@ class DetailsFrame(ctk.CTkFrame):
         from_minutes = self.from_minutes_box.get()
         self.to_minutes_box.configure(from_=int(from_minutes))
     
-    def process_images(self):
-        self.master.configure(cursor="watch")
-        self.master.store.latitude_deg = float(self.latitude_deg.get())
+    def save(self):
+        if self.latitude_deg.get() and self.latitude_deg.get() != "":
+            self.master.store.latitude_deg = float(self.latitude_deg.get())
         self.master.store.latitude_ref = self.latitude_ref.get()
-        self.master.store.longitude_deg = float(self.longitude_deg.get())
+        if self.longitude_deg.get() and self.longitude_deg.get() != "":
+            self.master.store.longitude_deg = float(self.longitude_deg.get())
         self.master.store.longitude_ref = self.longitude_ref.get()
-        self.master.store.address = self.address.get().strip()
+        if self.address.get() and self.address.get().strip() != "":
+            self.master.store.address = self.address.get().strip()
         if self.pic_name.get() and self.pic_name.get().strip() != "":
             self.master.store.pic_name = self.pic_name.get().strip()
         self.master.store.font_size = int(self.font_size.get())
         self.master.store.corner = Corner.from_string(self.corner.get())
         self.master.store.from_minutes = int(self.from_minutes_box.get())
         self.master.store.to_minutes = int(self.to_minutes_box.get())
+    
+    def process_images(self):
+        self.master.configure(cursor="watch")
+        self.save()
         self.master.next_screen()
+    
+    def reorder_images(self):
+        ImagesGrid(parent=self.master)
     
     def set_values(self):
         self.latitude_deg.insert(0, "51.59760168")
@@ -275,3 +314,155 @@ class DateTimePicker(ctk.CTkToplevel):
     def on_destroy(self, event):
         if self.date_time is None:
             self.date_time = (self.dt.date(), self.dt.time().hour, self.dt.time().minute)
+
+class ImagesGrid(ctk.CTkToplevel):
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.minsize(width=750, height=600)
+        
+        self.master = parent
+        self.img_indices_order = list(range(len(parent.store.images)))
+        
+        self.image_labels = []
+        self.image_number_labels = []
+        self.selected_image_label = None
+        self.filled_col = None
+        self.selected_image_idx = None
+        
+        appearance_mode = ctk.get_appearance_mode()
+        fg_color = ThemeManager().theme['CTkFrame']['fg_color'][1 if appearance_mode == 'Dark' else 0]
+
+        self.canvas = ctk.CTkCanvas(master=self, bg=fg_color, borderwidth=0, highlightthickness=0)
+        self.scrollbar = ctk.CTkScrollbar(master=self, orientation="vertical", command=self.canvas.yview)
+        self.scrollable_frame = ctk.CTkFrame(master=self.canvas)
+
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: self.canvas.configure(
+                scrollregion=self.canvas.bbox("all")
+            )
+        )
+        
+        self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        self.canvas.configure(yscrollcommand=self.scrollbar.set)
+
+        self.canvas.place(relx=0, rely=0, relwidth=1, relheight=1)
+        self.scrollbar.pack(side="right", fill="y")
+
+        self.bind("<Configure>", self.on_resize)
+        self.canvas.bind("<Configure>", self.on_canvas_resize)
+
+        self.render_actions(master=self.scrollable_frame)
+        self.load_images(parent.store.images)
+    
+    def get_label(self, frame):
+        return frame.children['!label']
+    
+    def render_actions(self, master):
+        self.action_frame = ctk.CTkFrame(master=master, fg_color='transparent')
+        self.action_frame.grid(row=0,column=0, pady=10)
+        
+        self.start_index_entry = IntSpinbox(master=self.action_frame)
+        self.start_index_entry.pack(side=ctk.LEFT)
+        
+        self.rearrange_btn = ctk.CTkButton(master=self.action_frame, text="Rearrange", command=self.rearrange)
+        self.rearrange_btn.pack(side=ctk.LEFT, padx=10)
+        
+        self.done_btn = ctk.CTkButton(master=self.action_frame, text="Done", command=self.on_done)
+        self.done_btn.pack(side=ctk.RIGHT)
+        
+        self.reverse_btn = ctk.CTkButton(master=self.action_frame, text="Reverse", command=self.reverse_images)
+        self.reverse_btn.pack(side=ctk.RIGHT, padx=10)
+        
+        self.delete_btn = ctk.CTkButton(master=self.action_frame, text='Delete', command=self.delete_images)
+        self.delete_btn.pack(side=ctk.RIGHT)
+    
+    def rearrange(self):
+        to_index = self.start_index_entry.get()
+        if self.selected_image_idx is not None and to_index != 0:
+            self.img_indices_order.insert(to_index - 1, self.img_indices_order.pop(self.selected_image_idx))
+            self.image_labels.insert(to_index - 1, self.image_labels.pop(self.selected_image_idx))
+            self.display_images()
+            
+    def delete_images(self):
+        if self.selected_image_idx is not None:
+            self.img_indices_order.pop(self.selected_image_idx)
+            self.image_labels.pop(self.selected_image_idx).grid_forget()
+            self.image_number_labels.pop(self.selected_image_idx).grid_forget()
+            self.selected_image_label = None
+            self.selected_image_idx = None
+            self.display_images()
+    
+    def reverse_images(self):
+        self.img_indices_order.reverse()
+        self.image_labels.reverse()
+        self.display_images()
+    
+    def on_done(self):
+        self.master.store.images = [ self.master.store.images[idx] for idx in self.img_indices_order ]
+        self.destroy()
+    
+    def on_canvas_resize(self, event):
+        canvas_width = event.width
+        self.canvas.itemconfig(1, width=canvas_width)
+    
+    def load_images(self, images):
+        for index, img_path in enumerate(images):
+            pil_img = Image.open(img_path)
+            pil_img.thumbnail((300, 300), Image.Resampling.LANCZOS)
+            tk_img = ImageTk.PhotoImage(pil_img)
+            label = ctk.CTkLabel(master=self.scrollable_frame, image=tk_img, text="")
+            label.image = tk_img
+            label.bind("<Button-1>", lambda event, idx=index: self.on_click_image(event, idx))
+            # label.bind("<B1-Motion>", self.on_drag_image)
+            # label.bind("<ButtonRelease-1>", self.on_drop_image)
+            self.image_labels.append(label)
+            
+            num_label = ctk.CTkLabel(master=self.scrollable_frame, text=str(index + 1))
+            self.image_number_labels.append(num_label)
+            
+        self.display_images()
+
+    def on_click_image(self, event, idx):
+        if event.widget.widgetName != 'label':
+            return
+        prev_selected_image_idx = self.selected_image_idx
+        if self.selected_image_label:
+            self.selected_image_label.configure(borderwidth=5, relief=ctk.FLAT)
+            self.selected_image_label = None
+            self.selected_image_idx = None
+        if prev_selected_image_idx != idx:
+            self.selected_image_label = event.widget
+            self.selected_image_label.configure(borderwidth=5, relief=ctk.RIDGE)
+            self.selected_image_idx = idx
+            
+
+
+    def display_images(self):
+        for label in self.image_labels:
+            label.grid_forget()
+        for num_label in self.image_number_labels:
+            num_label.grid_forget()
+        
+        row, col = 1, 0
+        for idx, label in enumerate(self.image_labels):
+            label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
+            self.get_label(label).bind("<Button-1>", lambda event, idx=idx: self.on_click_image(event, idx))
+            self.image_number_labels[idx].grid(row=row + 1, column=col, padx=5, pady=5)
+            self.image_number_labels[idx].configure(text=str(idx + 1))
+            col += 1
+            if (col * 300 + 50) >= self.winfo_width():
+                self.filled_col = col
+                col = 0
+                row += 2  # Increment by 2 to account for image number labels
+        if self.filled_col is None or col > self.filled_col:
+            self.filled_col = col
+        self.action_frame.grid(row=0, column=0, columnspan=self.filled_col, padx=10, pady=20, sticky=ctk.EW)
+
+    def on_resize(self, event):
+        
+        if ( self.filled_col is None or 
+            ((self.filled_col) * 300 < self.winfo_width()) or
+            ((self.filled_col - 1) * 300 > self.winfo_width())
+            ):
+            self.display_images()
