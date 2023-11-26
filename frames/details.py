@@ -33,6 +33,7 @@ class DetailsFrame(ctk.CTkFrame):
         self.render_address_widget()
         self.render_pic_name_corner_widget()
         self.render_process_btn()
+        self.validate_inputs()
         # self.set_values()
     
     def render_process_btn(self):
@@ -318,6 +319,7 @@ class DateTimePicker(ctk.CTkToplevel):
 class ImagesGrid(ctk.CTkToplevel):
     def __init__(self, parent):
         super().__init__(parent)
+        self.attributes('-topmost', True)
         self.minsize(width=750, height=600)
         
         self.master = parent
@@ -328,6 +330,9 @@ class ImagesGrid(ctk.CTkToplevel):
         self.selected_image_label = None
         self.filled_col = None
         self.selected_image_idx = None
+        
+        self.selected_image_labels = set()
+        self.selected_image_indices = set()
         
         appearance_mode = ctk.get_appearance_mode()
         fg_color = ThemeManager().theme['CTkFrame']['fg_color'][1 if appearance_mode == 'Dark' else 0]
@@ -357,6 +362,19 @@ class ImagesGrid(ctk.CTkToplevel):
     
     def get_label(self, frame):
         return frame.children['!label']
+
+    def select_label(self, sel_idx):
+        self.get_label(self.image_labels[sel_idx]).configure(borderwidth=5, relief=ctk.RIDGE)
+        self.selected_image_indices.add(sel_idx)
+        
+    def deselect_label(self, sel_idx):
+        self.selected_image_indices.remove(sel_idx)
+        self.get_label(self.image_labels[sel_idx]).configure(borderwidth=5, relief=ctk.FLAT)
+    
+    def deselect_all(self):
+        for sel_idx in list(self.selected_image_indices):
+            self.deselect_label(sel_idx)
+        self.selected_image_indices = set()
     
     def render_actions(self, master):
         self.action_frame = ctk.CTkFrame(master=master, fg_color='transparent')
@@ -374,28 +392,76 @@ class ImagesGrid(ctk.CTkToplevel):
         self.reverse_btn = ctk.CTkButton(master=self.action_frame, text="Reverse", command=self.reverse_images)
         self.reverse_btn.pack(side=ctk.RIGHT, padx=10)
         
+        self.deselect_all_btn = ctk.CTkButton(master=self.action_frame, text="Deselect All", command=self.deselect_all)
+        self.deselect_all_btn.pack(side=ctk.RIGHT, padx=(10,0))
+        
         self.delete_btn = ctk.CTkButton(master=self.action_frame, text='Delete', command=self.delete_images)
         self.delete_btn.pack(side=ctk.RIGHT)
+        
     
     def rearrange(self):
         to_index = self.start_index_entry.get()
-        if self.selected_image_idx is not None and to_index != 0:
-            self.img_indices_order.insert(to_index - 1, self.img_indices_order.pop(self.selected_image_idx))
-            self.image_labels.insert(to_index - 1, self.image_labels.pop(self.selected_image_idx))
-            self.display_images()
+        if to_index == 0 or len(self.selected_image_indices) == 0:
+            return
+        
+        final_indices_order = []
+        final_image_labels = []
+        final_indices = set()
+        sorted_indices = sorted(self.selected_image_indices)
+        current_image_len = len(self.image_labels)
+        
+        def addFromIndices(current_idx):
+            new_idx = current_idx
+            for i in sorted_indices:
+                final_indices_order.append(self.img_indices_order[i])
+                final_image_labels.append(self.image_labels[i])
+                final_indices.add(new_idx)
+                new_idx += 1
+        
+        for idx in range(0, current_image_len):
+            if to_index - 1 == idx:
+                addFromIndices(len(final_image_labels))
+            if idx in sorted_indices:
+                continue
+            final_indices_order.append(self.img_indices_order[idx])
+            final_image_labels.append(self.image_labels[idx])
             
+        if len(final_indices) == 0:
+            addFromIndices(len(final_image_labels))
+        
+        self.img_indices_order = final_indices_order
+        self.image_labels = final_image_labels
+        self.selected_image_indices = final_indices
+        self.display_images()
+    
     def delete_images(self):
-        if self.selected_image_idx is not None:
-            self.img_indices_order.pop(self.selected_image_idx)
-            self.image_labels.pop(self.selected_image_idx).grid_forget()
-            self.image_number_labels.pop(self.selected_image_idx).grid_forget()
-            self.selected_image_label = None
-            self.selected_image_idx = None
-            self.display_images()
+        deleted_images_count = 0
+        for sel_idx in list(self.selected_image_indices):
+            self.img_indices_order.pop(sel_idx - deleted_images_count)
+            self.image_labels.pop(sel_idx - deleted_images_count).grid_forget()
+            self.image_number_labels.pop(sel_idx - deleted_images_count).grid_forget()
+            deleted_images_count += 1
+        
+        self.start_index_entry.configure(to=len(self.image_labels)+1)
+        self.selected_image_indices = set()
+        self.display_images()
     
     def reverse_images(self):
-        self.img_indices_order.reverse()
-        self.image_labels.reverse()
+        if len(self.selected_image_indices) in [0,1] :
+            self.img_indices_order.reverse()
+            self.image_labels.reverse()
+            self.display_images()
+            return
+        sorted_list = sorted(self.selected_image_indices)
+        required_order = []
+        check = sorted_list[-2]
+        for idx in range(len(self.image_labels)):
+            if idx in sorted_list:
+                required_order.append(sorted_list[-(sorted_list.index(idx)+1)])
+            else:
+                required_order.append(idx)
+        self.img_indices_order = [self.img_indices_order[idx] for idx in required_order]
+        self.image_labels = [self.image_labels[idx] for idx in required_order]
         self.display_images()
     
     def on_done(self):
@@ -420,22 +486,40 @@ class ImagesGrid(ctk.CTkToplevel):
             
             num_label = ctk.CTkLabel(master=self.scrollable_frame, text=str(index + 1))
             self.image_number_labels.append(num_label)
-            
+        
+        self.start_index_entry.configure(to=index+2)
         self.display_images()
 
-    def on_click_image(self, event, idx):
+    def on_click_image(self, event, idx): 
+        ctrl_pressed = event.state & 0x0004 != 0
+        shift_pressed = event.state & 0x0001 != 0
         if event.widget.widgetName != 'label':
             return
-        prev_selected_image_idx = self.selected_image_idx
-        if self.selected_image_label:
-            self.selected_image_label.configure(borderwidth=5, relief=ctk.FLAT)
-            self.selected_image_label = None
-            self.selected_image_idx = None
-        if prev_selected_image_idx != idx:
-            self.selected_image_label = event.widget
-            self.selected_image_label.configure(borderwidth=5, relief=ctk.RIDGE)
-            self.selected_image_idx = idx
-            
+        
+        if idx in self.selected_image_indices:
+            self.deselect_label(idx)
+            return
+        
+        if shift_pressed: 
+            range_start = None
+            if len(self.selected_image_indices) == 0:
+                indices_range = range(0, idx+1)
+            elif min(self.selected_image_indices) > idx:
+                indices_range = range(idx, min(self.selected_image_indices))
+            else:
+                for selected_idx in range(idx, -1, -1):
+                    if selected_idx in list(self.selected_image_indices):
+                        indices_range = range(selected_idx, idx+1)
+                        break
+            for sel_idx in indices_range:
+                self.select_label(sel_idx)
+        elif ctrl_pressed:
+            self.select_label(idx)
+        else:
+            for sel_idx in list(self.selected_image_indices):
+                self.deselect_label(sel_idx)
+            self.selected_image_indices = {idx}
+            self.select_label(idx)
 
 
     def display_images(self):
