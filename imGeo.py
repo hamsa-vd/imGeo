@@ -662,6 +662,7 @@ class ImagesGrid(ctk.CTkToplevel):
                 scrollregion=self.canvas.bbox("all")
             )
         )
+        self.bind("<MouseWheel>", self.on_mouse_wheel)
         
         self.canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         self.canvas.configure(yscrollcommand=self.scrollbar.set)
@@ -674,6 +675,9 @@ class ImagesGrid(ctk.CTkToplevel):
 
         self.render_actions(master=self.scrollable_frame)
         self.load_images(parent.store.images)
+    
+    def on_mouse_wheel(self, event):
+        self.canvas.yview_scroll(int(-1*(event.delta/120)), "units")
     
     def get_label(self, frame):
         return frame.children['!label']
@@ -846,11 +850,13 @@ class ImagesGrid(ctk.CTkToplevel):
         row, col = 1, 0
         for idx, label in enumerate(self.image_labels):
             label.grid(row=row, column=col, padx=5, pady=5, sticky="nsew")
-            self.get_label(label).bind("<Button-1>", lambda event, idx=idx: self.on_click_image(event, idx))
+            current_label = self.get_label(label)
+            current_label.bind("<Button-1>", lambda event, idx=idx: self.on_click_image(event, idx))
+            current_label.configure(borderwidth=5)
             self.image_number_labels[idx].grid(row=row + 1, column=col, padx=5, pady=5)
             self.image_number_labels[idx].configure(text=str(idx + 1))
             col += 1
-            if (col * 300 + 50) >= self.winfo_width():
+            if (col * 300 + 150) >= self.winfo_width():
                 self.filled_col = col
                 col = 0
                 row += 2  # Increment by 2 to account for image number labels
