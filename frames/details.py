@@ -6,7 +6,7 @@ from tkcalendar import Calendar
 from datetime import datetime, date, time
 import sys
 sys.path.insert(0, "../utils")
-from common import LatitudeRef, LongitudeRef, FloatEntry, IntSpinbox, Corner
+from common import LatitudeRef, LongitudeRef, FloatEntry, IntSpinbox, Corner, open_image
 
 class DetailsFrame(ctk.CTkFrame):
     def __init__(self, master, **kwargs):
@@ -478,7 +478,7 @@ class ImagesGrid(ctk.CTkToplevel):
     
     def load_images(self, images):
         for index, img_path in enumerate(images):
-            pil_img = Image.open(img_path)
+            pil_img = open_image(img_path)
             pil_img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             tk_img = ImageTk.PhotoImage(pil_img)
             label = ctk.CTkLabel(master=self.scrollable_frame, image=tk_img, text="")

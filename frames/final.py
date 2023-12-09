@@ -5,7 +5,7 @@ import piexif
 import os
 import sys
 sys.path.insert(0, "../utils")
-from common import FinalImage,Corner
+from common import FinalImage,Corner, open_image
 from datetime import timedelta
 import secrets
 
@@ -22,7 +22,7 @@ class FinalFrame(ctk.CTkFrame):
     def process_images(self):
         last_datetime = self.master.store.datetime.replace(second=self.secure_random_number(0, 60))
         for image_path in self.master.store.images:
-            image = Image.open(image_path)
+            image = open_image(image_path)
             date = last_datetime
             last_datetime = self.get_rand_datetime(last_datetime)
             latitude = self.randomize_last_three_decimals(abs(self.master.store.latitude_deg))

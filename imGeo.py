@@ -2,7 +2,7 @@ import customtkinter as ctk
 from customtkinter import filedialog, ThemeManager
 from tkinterdnd2 import TkinterDnD, DND_FILES
 from tkcalendar import Calendar
-from PIL import Image, ImageDraw, ImageFont, ImageTk
+from PIL import Image, ImageDraw, ImageFont, ImageTk, ExifTags
 import piexif
 from datetime import datetime, date, time, timedelta
 from typing import List
@@ -176,6 +176,27 @@ class IntSpinbox(ctk.CTkFrame):
             if int(self.entry.get()) < to:
                 self.add_button.configure(state=ctk.NORMAL)
         super().configure(**kwargs)
+
+def open_image(image_path):
+    
+    image = Image.open(image_path)
+    
+    try:
+        exif = image._getexif()
+        if exif is not None:
+            orientation_key = next(key for key, value in ExifTags.TAGS.items() if value == 'Orientation')
+
+            if orientation_key in exif:
+                if exif[orientation_key] == 3:
+                    image = image.rotate(180, expand=True)
+                elif exif[orientation_key] == 6:
+                    image = image.rotate(270, expand=True)
+                elif exif[orientation_key] == 8:
+                    image = image.rotate(90, expand=True)
+    except (AttributeError, KeyError, IndexError):
+        pass
+
+    return image
 
 class Store:
     _instance = None
@@ -793,7 +814,7 @@ class ImagesGrid(ctk.CTkToplevel):
     
     def load_images(self, images):
         for index, img_path in enumerate(images):
-            pil_img = Image.open(img_path)
+            pil_img = open_image(img_path)
             pil_img.thumbnail((300, 300), Image.Resampling.LANCZOS)
             tk_img = ImageTk.PhotoImage(pil_img)
             label = ctk.CTkLabel(master=self.scrollable_frame, image=tk_img, text="")
@@ -885,7 +906,7 @@ class FinalFrame(ctk.CTkFrame):
     def process_images(self):
         last_datetime = self.master.store.datetime.replace(second=self.secure_random_number(0, 60))
         for image_path in self.master.store.images:
-            image = Image.open(image_path)
+            image = open_image(image_path)
             date = last_datetime
             last_datetime = self.get_rand_datetime(last_datetime)
             latitude = self.randomize_last_three_decimals(abs(self.master.store.latitude_deg))

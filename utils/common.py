@@ -1,6 +1,6 @@
 from enum import Enum
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ExifTags
 import sys
 
 class Screen(Enum):
@@ -170,3 +170,24 @@ class IntSpinbox(ctk.CTkFrame):
             if int(self.entry.get()) < to:
                 self.add_button.configure(state=ctk.NORMAL)
         super().configure(**kwargs)
+    
+def open_image(image_path):
+    
+    image = Image.open(image_path)
+    
+    try:
+        exif = image._getexif()
+        if exif is not None:
+            orientation_key = next(key for key, value in ExifTags.TAGS.items() if value == 'Orientation')
+
+            if orientation_key in exif:
+                if exif[orientation_key] == 3:
+                    image = image.rotate(180, expand=True)
+                elif exif[orientation_key] == 6:
+                    image = image.rotate(270, expand=True)
+                elif exif[orientation_key] == 8:
+                    image = image.rotate(90, expand=True)
+    except (AttributeError, KeyError, IndexError):
+        pass
+
+    return image
